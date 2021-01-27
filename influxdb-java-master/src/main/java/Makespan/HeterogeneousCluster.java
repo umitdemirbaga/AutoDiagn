@@ -91,43 +91,43 @@ public class HeterogeneousCluster extends Thread {
 
 					stragglersNameRunningSlowHosts.clear();
 
-					lowPerformanceRunningMapsName = DataLocality.lowPerformanceRunningMapsName1;
+					lowPerformanceRunningMapsName = SmartReader.lowPerformanceRunningMapsName1;
 
 					if (lowPerformanceRunningMapsName.size() > 0) {
 
 						System.out.println("< HeterogeneousCluster > ");
 						System.out.println("---------------------------------------");
-						System.out.println("All the running maps			: " + DataLocality.runningMapsName1);
+						System.out.println("All the running maps			: " + SmartReader.runningMapsName1);
 
 						System.out.println(
-								"runningMapsPerformanceMedian		: " + DataLocality.runningMapsPerformanceMedian1);
+								"runningMapsPerformanceMedian		: " + SmartReader.runningMapsPerformanceMedian1);
 
 //							System.out.println("runningMapsPerformance			: " + SmartReader.runningMapsPerformance1);
 
 						System.out.println(
-								"runningMapsPerformanceNorm1		: " + DataLocality.runningMapsPerformanceNorm1);
+								"runningMapsPerformanceNorm1		: " + SmartReader.runningMapsPerformanceNorm1);
 
-						System.out.println("progressListNorm			: " + DataLocality.progressListNorm);
+						System.out.println("progressListNorm			: " + SmartReader.progressListNorm);
 
-						System.out.println("exacTimeListNorm			: " + DataLocality.exacTimeListNorm);
+						System.out.println("exacTimeListNorm			: " + SmartReader.exacTimeListNorm);
 
-						System.out.println("runningMapsProgress			: " + DataLocality.runningMapsProgress1);
+						System.out.println("runningMapsProgress			: " + SmartReader.runningMapsProgress1);
 
 						System.out
-								.println("runningMapsExecutionTime		: " + DataLocality.runningMapsExecutionTime1);
+								.println("runningMapsExecutionTime		: " + SmartReader.runningMapsExecutionTime1);
 
 						performanceWithFactor.clear();
 
-						for (int i = 0; i < DataLocality.runningMapsPerformanceNorm1.size(); i++) {
+						for (int i = 0; i < SmartReader.runningMapsPerformanceNorm1.size(); i++) {
 							performanceWithFactor.add(Double.parseDouble(new DecimalFormat("##.##")
-									.format(DataLocality.runningMapsPerformanceNorm1.get(i) * DataLocality.factor)));
+									.format(SmartReader.runningMapsPerformanceNorm1.get(i) * SmartReader.factor)));
 						}
 
 						System.out.println("performanceWithFactorNorm		: " + performanceWithFactor);
 
-						System.out.println("Outliers				: " + lowPerformanceRunningMapsName);
+						System.out.println("Stragglers				: " + lowPerformanceRunningMapsName);
 
-						caseId = DataLocality.caseId;
+						caseId = SmartReader.runningMapsCaseId;
 
 						System.out.println("caseId					: " + caseId);
 						System.out.println("---------------------------------------");
@@ -192,11 +192,11 @@ public class HeterogeneousCluster extends Thread {
 								// -----------------------------------------------------------
 
 								String runningMapsName = "";
-								for (int i = 0; i < DataLocality.runningMapsName1.size(); i++) {
+								for (int i = 0; i < SmartReader.runningMapsName1.size(); i++) {
 									if (i == 0) {
-										runningMapsName = DataLocality.runningMapsName1.get(i);
+										runningMapsName = SmartReader.runningMapsName1.get(i);
 									} else {
-										runningMapsName = runningMapsName + "-" + DataLocality.runningMapsName1.get(i);
+										runningMapsName = runningMapsName + "-" + SmartReader.runningMapsName1.get(i);
 									}
 								}
 
@@ -214,12 +214,12 @@ public class HeterogeneousCluster extends Thread {
 								// -----------------------------------------------------------
 
 								String runningMapsProgress = "";
-								for (int i = 0; i < DataLocality.runningMapsProgress1.size(); i++) {
+								for (int i = 0; i < SmartReader.runningMapsProgress1.size(); i++) {
 									if (i == 0) {
-										runningMapsProgress = DataLocality.runningMapsProgress1.get(i) + "";
+										runningMapsProgress = SmartReader.runningMapsProgress1.get(i) + "";
 									} else {
 										runningMapsProgress = runningMapsProgress + "-"
-												+ DataLocality.runningMapsProgress1.get(i);
+												+ SmartReader.runningMapsProgress1.get(i);
 									}
 								}
 
@@ -237,12 +237,12 @@ public class HeterogeneousCluster extends Thread {
 								// -----------------------------------------------------------
 
 								String runningMapsExecutionTime = "";
-								for (int i = 0; i < DataLocality.runningMapsExecutionTime1.size(); i++) {
+								for (int i = 0; i < SmartReader.runningMapsExecutionTime1.size(); i++) {
 									if (i == 0) {
-										runningMapsExecutionTime = DataLocality.runningMapsExecutionTime1.get(i) + "";
+										runningMapsExecutionTime = SmartReader.runningMapsExecutionTime1.get(i) + "";
 									} else {
 										runningMapsExecutionTime = runningMapsExecutionTime + "-"
-												+ DataLocality.runningMapsExecutionTime1.get(i);
+												+ SmartReader.runningMapsExecutionTime1.get(i);
 									}
 								}
 
@@ -260,18 +260,18 @@ public class HeterogeneousCluster extends Thread {
 								// -----------------------------------------------------------
 
 								String runningMapsPerformance = "";
-								for (int i = 0; i < DataLocality.runningMapsPerformanceNorm1.size(); i++) {
+								for (int i = 0; i < SmartReader.runningMapsPerformance1.size(); i++) {
 									if (i == 0) {
-										runningMapsPerformance = DataLocality.runningMapsPerformanceNorm1.get(i) + "";
+										runningMapsPerformance = SmartReader.runningMapsPerformance1.get(i) + "";
 									} else {
 										runningMapsPerformance = runningMapsPerformance + "-"
-												+ DataLocality.runningMapsPerformanceNorm1.get(i);
+												+ SmartReader.runningMapsPerformance1.get(i);
 									}
 								}
 
 								last = "metricsType=" + "XheterogeneousMapsPerformance" + ",caseId=" + caseId
 										+ ",mapsPerformance=" + runningMapsPerformance + ",median="
-										+ Streaming.runningMapsPerformanceMedian1 + ",jobId=" + jobId;
+										+ SmartReader.runningMapsPerformanceMedian1 + ",jobId=" + jobId;
 
 								System.out.println(" [x] Sent >>>>  '" + last + "'");
 
@@ -284,12 +284,12 @@ public class HeterogeneousCluster extends Thread {
 								// -----------------------------------------------------------
 
 								String stragglers = "";
-								for (int i = 0; i < Streaming.lowPerformanceRunningMapsName1.size(); i++) {
+								for (int i = 0; i < SmartReader.lowPerformanceRunningMapsName1.size(); i++) {
 									if (i == 0) {
-										stragglers = Streaming.lowPerformanceRunningMapsName1.get(i);
+										stragglers = SmartReader.lowPerformanceRunningMapsName1.get(i);
 									} else {
 										stragglers = stragglers + "-"
-												+ Streaming.lowPerformanceRunningMapsName1.get(i);
+												+ SmartReader.lowPerformanceRunningMapsName1.get(i);
 									}
 								}
 
@@ -393,7 +393,7 @@ public class HeterogeneousCluster extends Thread {
 					}
 
 					try {
-						Thread.sleep(200);
+						Thread.sleep(2000);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}

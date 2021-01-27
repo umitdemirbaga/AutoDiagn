@@ -12,7 +12,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.commons.math3.distribution.TDistribution;
 import org.apache.commons.math3.exception.MathIllegalArgumentException;
@@ -31,9 +33,9 @@ import com.google.gson.Gson;
 
 import Makespan.DataLocality;
 import Makespan.DataLocalityCalculator;
+import Makespan.DetectorForMakespan;
 import Makespan.HeterogeneousCalculator;
 import Makespan.HeterogeneousCluster;
-import Makespan.DataLocality;
 
 /*
  * Copyright (c) 2019 Umit Demirbaga
@@ -42,8 +44,10 @@ import Makespan.DataLocality;
 
 public class SmartReader {
 
-//	public static String rabbitMQhost = "172.31.24.165"; // AWS
-	public static String rabbitMQhost = "192.168.56.6"; // laptop
+//	public static String rabbitMQhost = "172.31.0.117"; // AWS
+//	public static String rabbitMQhost = "192.168.56.6"; // laptop
+	
+	public static String rabbitMQhost = DetectorForMakespan.rabbitMQhost;
 	public static Configuration configuration = new Configuration(rabbitMQhost, "8086", "umit", "umit", "Metrics");
 	public static Query query = new Query();
 	public static String jobId = "15892993967090013";
@@ -53,25 +57,25 @@ public class SmartReader {
 
 	public static double factor = 1.5;
 
-//	public static List<String> runningMapsName1 = new ArrayList<String>();
+	public static List<String> runningMapsName1 = new ArrayList<String>();
 
-//	public static List<String> lowPerformanceRunningMapsName1 = new ArrayList<String>();
+	public static List<String> lowPerformanceRunningMapsName1 = new ArrayList<String>();
 
 	public static List<String> nonLocalRunningMapsName1 = new ArrayList<String>();
 
-//	public static double runningMapsPerformanceMedian1 = 0.0;
+	public static double runningMapsPerformanceMedian1 = 0.0;
 
-//	public static List<Double> runningMapsPerformance1 = new ArrayList<Double>();
+	public static List<Double> runningMapsPerformance1 = new ArrayList<Double>();
 
-//	public static List<Double> runningMapsPerformanceNorm1 = new ArrayList<Double>();
+	public static List<Double> runningMapsPerformanceNorm1 = new ArrayList<Double>();
 
-//	public static List<Double> runningMapsProgress1 = new ArrayList<Double>();
+	public static List<Double> runningMapsProgress1 = new ArrayList<Double>();
 
-//	public static List<Integer> runningMapsExecutionTime1 = new ArrayList<Integer>();
+	public static List<Integer> runningMapsExecutionTime1 = new ArrayList<Integer>();
 
-//	public static List<Double> exacTimeListNorm = new ArrayList<Double>();
+	public static List<Double> exacTimeListNorm = new ArrayList<Double>();
 
-//	public static List<Double> progressListNorm = new ArrayList<Double>();
+	public static List<Double> progressListNorm = new ArrayList<Double>();
 
 	public static List<String> runningSpeculativeMapsName1 = new ArrayList<String>();
 
@@ -113,17 +117,31 @@ public class SmartReader {
 
 	public static List<String> finishedAllNonLocalMapsName1 = new ArrayList<String>();
 
+	// NETWORK ISSUES
+	// ****************************************************************************************
+
+	public static List<String> disconnectedNodes = new ArrayList<String>();
+
+	public static List<String> mapsOnDisconnectedNodes = new ArrayList<String>();
+
+	public static List<String> runningMapsRestarted = new ArrayList<String>();
+
+	public static List<String> lowDownloadNodes = new ArrayList<String>();
+
+	public static List<String> mapsOnLowDownloadNodes = new ArrayList<String>();
+	
+	public static List<String> dataNodesNamesForBandwidth = new ArrayList<String>();
+	
+	public static List<Double> dataNodesDownloadSpeeds = new ArrayList<Double>();
+
 //	public static List<String> runningMapsName() {
 //		return runningMapsName1;
 //	}
 
-	public static void main(String[] args) throws Exception {
-
-		System.out.println("getMapsOnSlowDataNodes11 = " + getMapsOnSlowDataNodes(jobId));
-
+//	public static void main(String[] args) throws Exception {
+//		System.out.println("getMapsOnSlowDataNodes11 = " + getMapsOnSlowDataNodes(jobId));
 //		System.out.println("getDataNodesNameHavingMaxVCoresNum = " + getDataNodesNameHavingMaxVCoresNum(jobId));
-
-		System.exit(0);
+//		System.exit(0);
 //		System.out.println("getSucceededMapsName: " + getSucceededMapsName(jobId));
 //
 //		System.out.println("getKilledMapsNum: " + getKilledMapsNum(jobId));
@@ -206,10 +224,10 @@ public class SmartReader {
 //		System.out.println("getMasterNodeName: " + getMasterNodeName(jobId));
 //		// return the host name of the master node
 //
-		System.out.println("getDataNodesNames: " + getDataNodesNames(jobId));
+//		System.out.println("getDataNodesNames: " + getDataNodesNames(jobId));
 //		// return the names of the datanodes.
-
-		System.out.println("getHighDataNodesName: " + getHighDataNodesName(jobId));
+//
+//		System.out.println("getHighDataNodesName: " + getHighDataNodesName(jobId));
 //
 //		System.out.println("getMasterNodeCpuUsage: " + getMasterNodeCpuUsage());
 //		// return the cpu usage of the master node.
@@ -545,63 +563,62 @@ public class SmartReader {
 //		
 //		System.out.println("getSucceededStragglersRunningSlowNodesHostName yyy + " + getSucceededStragglersRunningSlowNodesHostName(jobId));
 
-		System.out.println(
-				"******************************************************************************************************************");
+//		System.out.println("******************************************************************************************************************");
 
 //			TimeUnit.SECONDS.sleep(2);
 //		} // while
 
+//	}
+
+	public static List<Double> getRunningMapsProgressConfidenceInterval(String jobId)
+			throws IOException, URISyntaxException, ParseException {
+
+		List<Double> progressConfidenceInterval = new ArrayList<Double>();
+
+		List<Double> runningMapsPerformance = new ArrayList<Double>();
+		runningMapsPerformance = getRunningMapsProgress(jobId);
+
+		SummaryStatistics stats = new SummaryStatistics();
+		for (double val : runningMapsPerformance) {
+			stats.addValue(val);
+		}
+
+		// Calculate 95% confidence interval
+		double ci = calcMeanCI(stats, 0.95);
+//        System.out.println(String.format("Mean: %f", stats.getMean()));
+		double lower = stats.getMean() - ci;
+		double upper = stats.getMean() + ci;
+//        System.out.println(String.format("Confidence Interval 95%%: %f, %f", lower, upper));
+		progressConfidenceInterval.add(lower);
+		progressConfidenceInterval.add(upper);
+
+		return progressConfidenceInterval;
 	}
 
-//	public static List<Double> getRunningMapsProgressConfidenceInterval(String jobId)
-//			throws IOException, URISyntaxException, ParseException {
-//
-//		List<Double> progressConfidenceInterval = new ArrayList<Double>();
-//
-//		List<Double> runningMapsPerformance = new ArrayList<Double>();
-//		runningMapsPerformance = getRunningMapsProgress(jobId);
-//
-//		SummaryStatistics stats = new SummaryStatistics();
-//		for (double val : runningMapsPerformance) {
-//			stats.addValue(val);
-//		}
-//
-//		// Calculate 95% confidence interval
-//		double ci = calcMeanCI(stats, 0.95);
-////        System.out.println(String.format("Mean: %f", stats.getMean()));
-//		double lower = stats.getMean() - ci;
-//		double upper = stats.getMean() + ci;
-////        System.out.println(String.format("Confidence Interval 95%%: %f, %f", lower, upper));
-//		progressConfidenceInterval.add(lower);
-//		progressConfidenceInterval.add(upper);
-//
-//		return progressConfidenceInterval;
-//	}
+	public static List<Double> getRunningMapsExecutionTimeConfidenceInterval(String jobId)
+			throws IOException, URISyntaxException, ParseException {
 
-//	public static List<Double> getRunningMapsExecutionTimeConfidenceInterval(String jobId)
-//			throws IOException, URISyntaxException, ParseException {
-//
-//		List<Double> executionTimeConfidenceInterval = new ArrayList<Double>();
-//
-//		List<Integer> runningMapsExecutiontime = new ArrayList<Integer>();
-//		runningMapsExecutiontime = getRunningMapsExecutionTime(jobId);
-//
-//		SummaryStatistics stats = new SummaryStatistics();
-//		for (double val : runningMapsExecutiontime) {
-//			stats.addValue(val);
-//		}
-//
-//		// Calculate 95% confidence interval
-//		double ci = calcMeanCI(stats, 0.95);
-////        System.out.println(String.format("Mean: %f", stats.getMean()));
-//		double lower = stats.getMean() - ci;
-//		double upper = stats.getMean() + ci;
-////        System.out.println(String.format("Confidence Interval 95%%: %f, %f", lower, upper));
-//		executionTimeConfidenceInterval.add(lower);
-//		executionTimeConfidenceInterval.add(upper);
-//
-//		return executionTimeConfidenceInterval;
-//	}
+		List<Double> executionTimeConfidenceInterval = new ArrayList<Double>();
+
+		List<Integer> runningMapsExecutiontime = new ArrayList<Integer>();
+		runningMapsExecutiontime = getRunningMapsExecutionTime(jobId);
+
+		SummaryStatistics stats = new SummaryStatistics();
+		for (double val : runningMapsExecutiontime) {
+			stats.addValue(val);
+		}
+
+		// Calculate 95% confidence interval
+		double ci = calcMeanCI(stats, 0.95);
+//        System.out.println(String.format("Mean: %f", stats.getMean()));
+		double lower = stats.getMean() - ci;
+		double upper = stats.getMean() + ci;
+//        System.out.println(String.format("Confidence Interval 95%%: %f, %f", lower, upper));
+		executionTimeConfidenceInterval.add(lower);
+		executionTimeConfidenceInterval.add(upper);
+
+		return executionTimeConfidenceInterval;
+	}
 
 	private static double calcMeanCI(SummaryStatistics stats, double level) {
 		try {
@@ -913,8 +930,8 @@ public class SmartReader {
 
 		int runningMapsNum = 0;
 
-		if (!(DataLocality.runningMapsName1 == null)) {
-			runningMapsNum = DataLocality.runningMapsName1.size();
+		if (!(runningMapsName1 == null)) {
+			runningMapsNum = runningMapsName1.size();
 		}
 
 //		List<String> runningMapsName = getRunningMapsName(jobId);
@@ -927,7 +944,7 @@ public class SmartReader {
 			if (runningMapsNum != 0) {
 				String mapId = "";
 				for (int i = 0; i < runningMapsNum; i++) {
-					mapId = DataLocality.runningMapsName1.get(i);
+					mapId = runningMapsName1.get(i);
 //					System.out.println("mapId= " + mapId);
 //					System.out.println("checkMapDataLocality = " + checkMapDataLocality(jobId, mapId));
 					if (checkMapDataLocality(jobId, mapId)) {
@@ -956,7 +973,7 @@ public class SmartReader {
 	public static List<String> getLocalRunningMapsName(String jobId)
 			throws IOException, URISyntaxException, ParseException {
 
-		List<String> runningMapsName = DataLocality.runningMapsName1;
+		List<String> runningMapsName = getRunningMapsName(jobId);
 		List<String> localRunningMapsName = new ArrayList<>();
 
 		int runningMapsNum = 0;
@@ -991,11 +1008,11 @@ public class SmartReader {
 //		runningMapsName = runningMapsName1;
 
 		try {
-			if (!(DataLocality.runningMapsName1 == null)) {
+			if (!(runningMapsName1 == null)) {
 				String mapId = "";
 
-				for (int i = 0; i < DataLocality.runningMapsName1.size(); i++) {
-					mapId = DataLocality.runningMapsName1.get(i);
+				for (int i = 0; i < runningMapsName1.size(); i++) {
+					mapId = runningMapsName1.get(i);
 
 					if (checkMapDataLocality(jobId, mapId)) {
 //					System.out.println(mapId + " has the data locally..");
@@ -1093,7 +1110,7 @@ public class SmartReader {
 	public static List<String> getRunningMapAssignedContainers(String jobId)
 			throws IOException, URISyntaxException, ParseException {
 
-		List<String> runningMapsName = DataLocality.runningMapsName1;
+		List<String> runningMapsName = getRunningMapsName(jobId);
 		int runningMapsNum = runningMapsName.size();
 		List<String> runningMapAssignedContainers = new ArrayList<String>();
 
@@ -1397,121 +1414,182 @@ public class SmartReader {
 	}
 
 	// return the name of the running maps
-//	public static List<String> getRunningMapsName(String jobId) throws IOException, URISyntaxException, ParseException {
-//
-//		List<String> runningMapsName = new ArrayList<String>();
-////		int getTotalTasksNum = getRunningContainersNum(jobId);
-//
-//		int getTotalTasksNum = getTotalTasksNum(jobId);
-//
-////		System.out.println("getTotalTasksNum = " + getTotalTasksNum);
-//
-//		String value = "";
-//
-//		if (getTotalTasksNum > 1) {
-//			try {
-//				query.setMeasurement("sigar");
-//				query.setLimit(1000);
-//				query.fillNullValues("0");
-//
-//				DataReader dataReader = new DataReader(query, configuration);
-//				ResultSet resultSet = dataReader.getResult();
-//				Query query1 = new Query();
-//				query1.setCustomQuery("select mapId from map where jobId='" + jobId
-//						+ "' and state='RUNNING' and blockId <> '-1' order by desc limit " + getTotalTasksNum);
-//				dataReader.setQuery(query1);
-//				resultSet = dataReader.getResult();
-//				Gson gson = new Gson();
-//				String jsonStr = gson.toJson(resultSet);
-//				JSONParser parser = new JSONParser();
-//				JSONObject obj = (JSONObject) parser.parse(jsonStr);
-//				JSONArray obj2 = (JSONArray) obj.get("results");
-//				JSONObject obj3 = (JSONObject) obj2.get(0);
-//				JSONArray obj4 = (JSONArray) obj3.get("series");
-//				JSONObject obj5 = (JSONObject) obj4.get(0);
-//				JSONArray obj6 = (JSONArray) obj5.get("values");
-//
-//				for (int i = 0; i < obj6.size(); i++) {
-//					String[] values = (obj6.get(i).toString()).split(",");
-//					value = values[1].replace("]", "").replace("\"", "").replace("\\", "");
-//					if (!runningMapsName.contains(value)) {
-//						runningMapsName.add(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
-//					}
-//
-////					Thread.sleep(50);
-//				}
-//			} catch (Exception e) {
-//				System.out.println("no runningMapsName!");
-//				runningMapsName = null;
-//			}
-//
-//			runningMapsName1 = runningMapsName;
-//		}
-//		return runningMapsName;
-//	}
+	public static List<String> getRunningMapsName(String jobId) throws IOException, URISyntaxException, ParseException {
+
+		List<String> runningMapsName = new ArrayList<String>();
+//		int getTotalTasksNum = getRunningContainersNum(jobId);
+
+		int getTotalTasksNum = getTotalTasksNum(jobId);
+
+//		System.out.println("getTotalTasksNum = " + getTotalTasksNum);
+
+		String value = "";
+
+		if (getTotalTasksNum > 1) {
+			try {
+				query.setMeasurement("sigar");
+				query.setLimit(1000);
+				query.fillNullValues("0");
+
+				DataReader dataReader = new DataReader(query, configuration);
+				ResultSet resultSet = dataReader.getResult();
+				Query query1 = new Query();
+				query1.setCustomQuery("select mapId from map where jobId='" + jobId
+						+ "' and state='RUNNING' and blockId <> '-1' order by desc limit " + getTotalTasksNum);
+				dataReader.setQuery(query1);
+				resultSet = dataReader.getResult();
+				Gson gson = new Gson();
+				String jsonStr = gson.toJson(resultSet);
+				JSONParser parser = new JSONParser();
+				JSONObject obj = (JSONObject) parser.parse(jsonStr);
+				JSONArray obj2 = (JSONArray) obj.get("results");
+				JSONObject obj3 = (JSONObject) obj2.get(0);
+				JSONArray obj4 = (JSONArray) obj3.get("series");
+				JSONObject obj5 = (JSONObject) obj4.get(0);
+				JSONArray obj6 = (JSONArray) obj5.get("values");
+
+				for (int i = 0; i < obj6.size(); i++) {
+					String[] values = (obj6.get(i).toString()).split(",");
+					value = values[1].replace("]", "").replace("\"", "").replace("\\", "");
+					if (!runningMapsName.contains(value)) {
+						runningMapsName.add(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
+					}
+
+//					Thread.sleep(50);
+				}
+			} catch (Exception e) {
+				System.out.println("no runningMapsName!");
+				runningMapsName = null;
+			}
+
+			runningMapsName1 = runningMapsName;
+		}
+		return runningMapsName;
+	}
 
 	// return the name of the running maps
-//	public static List<String> getRunningMapsNameNew(String jobId)
-//			throws IOException, URISyntaxException, ParseException, InterruptedException {
-//
-//		List<String> runningMapsName = new ArrayList<String>();
-//
-//		while (true) {
-//			runningMapsCaseId = getRunningMapsCaseId(jobId) - 1;
-//
-//			if (runningMapsCaseId > 0) {
-//				break;
-//			} else {
-//				Thread.sleep(1000);
-//			}
-//		}
-//
-//		String value = "";
-//
-////		if (runningMapsCaseId > 1) {
-//		try {
-//			query.setMeasurement("sigar");
-//			query.setLimit(1000);
-//			query.fillNullValues("0");
-//
-//			DataReader dataReader = new DataReader(query, configuration);
-//			ResultSet resultSet = dataReader.getResult();
-//			Query query1 = new Query();
-//			query1.setCustomQuery("select mapId from map where jobId='" + jobId
-//					+ "' and state='RUNNING' and blockId <> '-1' and caseId='" + runningMapsCaseId + "' order by desc");
-//			dataReader.setQuery(query1);
-//			resultSet = dataReader.getResult();
-//			Gson gson = new Gson();
-//			String jsonStr = gson.toJson(resultSet);
-//			JSONParser parser = new JSONParser();
-//			JSONObject obj = (JSONObject) parser.parse(jsonStr);
-//			JSONArray obj2 = (JSONArray) obj.get("results");
-//			JSONObject obj3 = (JSONObject) obj2.get(0);
-//			JSONArray obj4 = (JSONArray) obj3.get("series");
-//			JSONObject obj5 = (JSONObject) obj4.get(0);
-//			JSONArray obj6 = (JSONArray) obj5.get("values");
-//
-//			for (int i = 0; i < obj6.size(); i++) {
-//				String[] values = (obj6.get(i).toString()).split(",");
-//				value = values[1].replace("]", "").replace("\"", "").replace("\\", "");
-//				if (!runningMapsName.contains(value)) {
-//					runningMapsName.add(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
-//				}
-//			}
-////				runningMapsName1 = null; // don't use 'clear' for only this in this method "getRunningMapsNameNew"
-////				runningMapsName1 = runningMapsName;
-//		} catch (Exception e) {
-//			System.out.println("no runningMapsNameNew!");
-////			System.out.println(e);
-//			runningMapsName = null;
-//			runningMapsName1 = null;
-//		}
-//
-////		} // if
-//		runningMapsName1 = null; // don't use 'clear' for only this in this method "getRunningMapsNameNew"
-//		runningMapsName1 = runningMapsName;
-//		return runningMapsName;
-//	}
+	public static List<String> getRunningMapsNameNew(String jobId)
+			throws IOException, URISyntaxException, ParseException, InterruptedException {
+
+		List<String> runningMapsName = new ArrayList<String>();
+
+		while (true) {
+			runningMapsCaseId = getRunningMapsCaseId(jobId) - 1;
+
+			if (runningMapsCaseId > 0) {
+				break;
+			} else {
+				Thread.sleep(1000);
+			}
+		}
+
+		String value = "";
+
+//		if (runningMapsCaseId > 1) {
+		try {
+			query.setMeasurement("sigar");
+			query.setLimit(1000);
+			query.fillNullValues("0");
+
+			DataReader dataReader = new DataReader(query, configuration);
+			ResultSet resultSet = dataReader.getResult();
+			Query query1 = new Query();
+			query1.setCustomQuery("select mapId from map where jobId='" + jobId + "' and state='RUNNING' and blockId <> '-1' and caseId='" + runningMapsCaseId + "' order by desc");
+			dataReader.setQuery(query1);
+			resultSet = dataReader.getResult();
+			Gson gson = new Gson();
+			String jsonStr = gson.toJson(resultSet);
+			JSONParser parser = new JSONParser();
+			JSONObject obj = (JSONObject) parser.parse(jsonStr);
+			JSONArray obj2 = (JSONArray) obj.get("results");
+			JSONObject obj3 = (JSONObject) obj2.get(0);
+			JSONArray obj4 = (JSONArray) obj3.get("series");
+			JSONObject obj5 = (JSONObject) obj4.get(0);
+			JSONArray obj6 = (JSONArray) obj5.get("values");
+
+			for (int i = 0; i < obj6.size(); i++) {
+				String[] values = (obj6.get(i).toString()).split(",");
+				value = values[1].replace("]", "").replace("\"", "").replace("\\", "");
+				if (!runningMapsName.contains(value)) {
+					runningMapsName.add(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
+				}
+			}
+//				runningMapsName1 = null; // don't use 'clear' for only this in this method "getRunningMapsNameNew"
+//				runningMapsName1 = runningMapsName;
+		} catch (Exception e) {
+			System.out.println("no runningMapsNameNew!");
+//			System.out.println(e);
+			runningMapsName = null;
+			runningMapsName1 = null;
+		}
+
+//		} // if
+		runningMapsName1 = null; // don't use 'clear' for only this in this method "getRunningMapsNameNew"
+		runningMapsName1 = runningMapsName;
+		return runningMapsName;
+	}
+	
+	// return the name of the running maps
+	public static List<String> getRunningMapsNameNew2(String jobId)
+			throws IOException, URISyntaxException, ParseException, InterruptedException {
+
+		List<String> runningMapsName = new ArrayList<String>();
+
+		while (true) {
+			runningMapsCaseId = getRunningMapsCaseId(jobId) - 1;
+
+			if (runningMapsCaseId > 0) {
+				break;
+			} else {
+				Thread.sleep(1000);
+			}
+		}
+
+		String value = "";
+
+//		if (runningMapsCaseId > 1) {
+		try {
+			query.setMeasurement("sigar");
+			query.setLimit(1000);
+			query.fillNullValues("0");
+
+			DataReader dataReader = new DataReader(query, configuration);
+			ResultSet resultSet = dataReader.getResult();
+			Query query1 = new Query();
+			query1.setCustomQuery("select mapId from map where jobId='" + jobId + "' and state='RUNNING' and progress <> '0.00' and caseId='" + runningMapsCaseId + "' order by desc");
+			dataReader.setQuery(query1);
+			resultSet = dataReader.getResult();
+			Gson gson = new Gson();
+			String jsonStr = gson.toJson(resultSet);
+			JSONParser parser = new JSONParser();
+			JSONObject obj = (JSONObject) parser.parse(jsonStr);
+			JSONArray obj2 = (JSONArray) obj.get("results");
+			JSONObject obj3 = (JSONObject) obj2.get(0);
+			JSONArray obj4 = (JSONArray) obj3.get("series");
+			JSONObject obj5 = (JSONObject) obj4.get(0);
+			JSONArray obj6 = (JSONArray) obj5.get("values");
+
+			for (int i = 0; i < obj6.size(); i++) {
+				String[] values = (obj6.get(i).toString()).split(",");
+				value = values[1].replace("]", "").replace("\"", "").replace("\\", "");
+				if (!runningMapsName.contains(value)) {
+					runningMapsName.add(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
+				}
+			}
+//				runningMapsName1 = null; // don't use 'clear' for only this in this method "getRunningMapsNameNew"
+//				runningMapsName1 = runningMapsName;
+		} catch (Exception e) {
+			System.out.println("no runningMapsNameNew!");
+//			System.out.println(e);
+			runningMapsName = null;
+			runningMapsName1 = null;
+		}
+
+//		} // if
+		runningMapsName1 = null; // don't use 'clear' for only this in this method "getRunningMapsNameNew"
+		runningMapsName1 = runningMapsName;
+		return runningMapsName;
+	}
 
 	public static int getRunningMapsCaseId(String jobId) throws IOException, URISyntaxException, ParseException {
 
@@ -1555,10 +1633,10 @@ public class SmartReader {
 
 		List<String> getRunningNormalMapsName = new ArrayList<String>();
 
-		if (!(DataLocality.runningMapsName1 == null)) {
-			for (int i = 0; i < DataLocality.runningMapsName1.size(); i++) {
-				if (!DataLocality.runningMapsName1.get(i).contains("_")) {
-					getRunningNormalMapsName.add(DataLocality.runningMapsName1.get(i));
+		if (!(runningMapsName1 == null)) {
+			for (int i = 0; i < runningMapsName1.size(); i++) {
+				if (!runningMapsName1.get(i).contains("_")) {
+					getRunningNormalMapsName.add(runningMapsName1.get(i));
 				}
 			}
 		}
@@ -1573,10 +1651,10 @@ public class SmartReader {
 
 		List<String> runningSpeculativeMapsName = new ArrayList<String>();
 
-		if (!(DataLocality.runningMapsName1 == null)) {
-			for (int i = 0; i < DataLocality.runningMapsName1.size(); i++) {
-				if (DataLocality.runningMapsName1.get(i).contains("_")) {
-					runningSpeculativeMapsName.add(DataLocality.runningMapsName1.get(i));
+		if (!(runningMapsName1 == null)) {
+			for (int i = 0; i < runningMapsName1.size(); i++) {
+				if (runningMapsName1.get(i).contains("_")) {
+					runningSpeculativeMapsName.add(runningMapsName1.get(i));
 				}
 			}
 		}
@@ -1707,7 +1785,7 @@ public class SmartReader {
 	public static List<Double> getRunningMapsMemoryUsage(String jobId)
 			throws IOException, URISyntaxException, ParseException {
 
-		List<String> runningMapsName = DataLocality.runningMapsName1;
+		List<String> runningMapsName = getRunningMapsName(jobId);
 
 		int runningMapsNum = runningMapsName.size();
 
@@ -1758,7 +1836,7 @@ public class SmartReader {
 		List<Double> runningMapsCpuUsage = new ArrayList<Double>();
 		try {
 
-			List<String> runningMapsName = DataLocality.runningMapsName1;
+			List<String> runningMapsName = getRunningMapsName(jobId);
 //		System.out.println("runningMapsName= " + runningMapsName);
 			List<String> dataNodesName = getDataNodesNames(jobId);
 //		System.out.println("dataNodesName= " + dataNodesName);
@@ -1829,8 +1907,16 @@ public class SmartReader {
 			throws IOException, URISyntaxException, ParseException {
 
 		List<String> runningMapsHostName = new ArrayList<String>();
+		
+		int getTotalRunningMapsNum = 0;
+		
+		try {
+			getTotalRunningMapsNum = runningMapsName1.size();
+		} catch (Exception e) {
+			getTotalRunningMapsNum = 0;
+		}
 
-		int getTotalRunningMapsNum = DataLocality.runningMapsName1.size();
+		
 
 		if (getTotalRunningMapsNum > 1) {
 			try {
@@ -1874,8 +1960,14 @@ public class SmartReader {
 	// return the name of the nodes which host running maps
 	public static List<String> getNodesHostRunningMaps(String jobId)
 			throws IOException, URISyntaxException, ParseException {
-
-		List<String> getRunningMapsHostName = getRunningMapsHostName(jobId);
+		
+		List<String> getRunningMapsHostName = new ArrayList<String>();
+		
+		try {
+			getRunningMapsHostName = getRunningMapsHostName(jobId);
+		} catch (Exception e) {
+			getRunningMapsHostName = null;
+		}
 
 		List<String> getNodesHostRunningMaps = new ArrayList<String>();
 
@@ -1932,38 +2024,42 @@ public class SmartReader {
 	}
 
 	// return the name of the nodes which host running maps
-//	public static List<String> getNodesHostLowProgressRunningMaps(String jobId)
-//			throws IOException, URISyntaxException, ParseException {
-//
-//		List<String> getLowProgressRunningMapsHostName = getLowProgressRunningMapsHostName(jobId);
-//
-//		List<String> getNodesHostLowProgressRunningMaps = new ArrayList<String>();
-//
-//		if (getLowProgressRunningMapsHostName.size() != 0) {
-//			for (int i = 0; i < getLowProgressRunningMapsHostName.size(); i++) {
-//				if (!getNodesHostLowProgressRunningMaps.contains(getLowProgressRunningMapsHostName.get(i))) {
-//					getNodesHostLowProgressRunningMaps.add(getLowProgressRunningMapsHostName.get(i));
-//				}
-//			}
-//		}
-//		return getNodesHostLowProgressRunningMaps;
-//	}
+	public static List<String> getNodesHostLowProgressRunningMaps(String jobId)
+			throws IOException, URISyntaxException, ParseException {
+
+		List<String> getLowProgressRunningMapsHostName = getLowProgressRunningMapsHostName(jobId);
+
+		List<String> getNodesHostLowProgressRunningMaps = new ArrayList<String>();
+
+		if (getLowProgressRunningMapsHostName.size() != 0) {
+			for (int i = 0; i < getLowProgressRunningMapsHostName.size(); i++) {
+				if (!getNodesHostLowProgressRunningMaps.contains(getLowProgressRunningMapsHostName.get(i))) {
+					getNodesHostLowProgressRunningMaps.add(getLowProgressRunningMapsHostName.get(i));
+				}
+			}
+		}
+		return getNodesHostLowProgressRunningMaps;
+	}
 
 	// return the name of the nodes which host running maps
-	public static List<String> getNodesHostLowPerformanceRunningMaps(String jobId)
+	public static List<String> getNodesHostLowPerformanceRunningMaps(String jobId) // ***************************************************************
+																					// UPDATED_VERSION_2
 			throws IOException, URISyntaxException, ParseException, InterruptedException {
 
 		List<String> getLowPerformanceRunningMapsHostName = getLowPerformanceRunningMapsHostName(jobId);
 
 		List<String> getNodesHostLowPerformanceRunningMaps = new ArrayList<String>();
 
-		if (getLowPerformanceRunningMapsHostName.size() != 0) {
-			for (int i = 0; i < getLowPerformanceRunningMapsHostName.size(); i++) {
-				if (!getNodesHostLowPerformanceRunningMaps.contains(getLowPerformanceRunningMapsHostName.get(i))) {
-					getNodesHostLowPerformanceRunningMaps.add(getLowPerformanceRunningMapsHostName.get(i));
-				}
-			}
-		}
+//		if (getLowPerformanceRunningMapsHostName.size() != 0) {
+//			for (int i = 0; i < getLowPerformanceRunningMapsHostName.size(); i++) {
+//				if (!getNodesHostLowPerformanceRunningMaps.contains(getLowPerformanceRunningMapsHostName.get(i))) {
+//					getNodesHostLowPerformanceRunningMaps.add(getLowPerformanceRunningMapsHostName.get(i));
+//				}
+//			}
+//		}
+
+		getNodesHostLowPerformanceRunningMaps = getLowPerformanceRunningMapsHostName.stream().distinct()
+				.collect(Collectors.toList());
 
 		getNodesHostLowPerformanceRunningMaps1.clear();
 		getNodesHostLowPerformanceRunningMaps1 = getNodesHostLowPerformanceRunningMaps;
@@ -2789,97 +2885,97 @@ public class SmartReader {
 		return clusterAvailableVCores;
 	}
 
-//	public static List<Double> getRunningMapsProgress(String jobId)
-//			throws IOException, URISyntaxException, ParseException {
-//
-//		List<String> runningMapsName = getRunningMapsName(jobId); // ???
-//
-//		int runningMapsNum = runningMapsName.size();
-//
-////		int totalNodes = getClusterTotalDataNodes(jobId);
-//
-//		List<Double> getRunningMapsProgress = new ArrayList<Double>();
-//
-//		query.setMeasurement("sigar");
-//		query.setLimit(1000);
-//		query.fillNullValues("0");
-//		DataReader dataReader = new DataReader(query, configuration);
-//		ResultSet resultSet = dataReader.getResult();
-//		Query query1 = new Query();
-//
-//		for (int i = 0; i < runningMapsNum; i++) {
-//			try {
-//				query1.setCustomQuery(
-//						"select progress from map where mapId='" + runningMapsName.get(i) + "' order by desc limit 1");
-//				dataReader.setQuery(query1);
-//				resultSet = dataReader.getResult();
-//				Gson gson = new Gson();
-//				String jsonStr = gson.toJson(resultSet);
-//				JSONParser parser = new JSONParser();
-//				JSONObject obj = (JSONObject) parser.parse(jsonStr);
-//				JSONArray obj2 = (JSONArray) obj.get("results");
-//				JSONObject obj3 = (JSONObject) obj2.get(0);
-//				JSONArray obj4 = (JSONArray) obj3.get("series");
-//				JSONObject obj5 = (JSONObject) obj4.get(0);
-//				JSONArray obj6 = (JSONArray) obj5.get("values");
-//
-//				String[] values = (obj6.get(0).toString()).split(",");
-//				getRunningMapsProgress
-//						.add(Double.parseDouble(values[1].replace("]", "").replace("\"", "").replace("\\", "")));
-//
-//			} catch (Exception e) {
-//				System.out.println("no getRunningMapsProgress!");
-//				getRunningMapsProgress = null;
-//			}
-//		}
-//		return getRunningMapsProgress;
-//	}
+	public static List<Double> getRunningMapsProgress(String jobId)
+			throws IOException, URISyntaxException, ParseException {
 
-//	public static List<Double> getLowProgressRunningMaps(String jobId)
-//			throws IOException, URISyntaxException, ParseException {
-//
-//		List<String> getLowProgressRunningMapsName = getLowProgressRunningMapsName(jobId);
-//
-//		int getLowProgressRunningMapsNum = getLowProgressRunningMapsName.size();
-//
-////		int totalNodes = getClusterTotalDataNodes(jobId);
-//
-//		List<Double> getLowProgressRunningMaps = new ArrayList<Double>();
-//
-//		query.setMeasurement("sigar");
-//		query.setLimit(1000);
-//		query.fillNullValues("0");
-//		DataReader dataReader = new DataReader(query, configuration);
-//		ResultSet resultSet = dataReader.getResult();
-//		Query query1 = new Query();
-//
-//		for (int i = 0; i < getLowProgressRunningMapsNum; i++) {
-//			try {
-//				query1.setCustomQuery("select progress from map where mapId='" + getLowProgressRunningMapsName.get(i)
-//						+ "' order by desc limit 1");
-//				dataReader.setQuery(query1);
-//				resultSet = dataReader.getResult();
-//				Gson gson = new Gson();
-//				String jsonStr = gson.toJson(resultSet);
-//				JSONParser parser = new JSONParser();
-//				JSONObject obj = (JSONObject) parser.parse(jsonStr);
-//				JSONArray obj2 = (JSONArray) obj.get("results");
-//				JSONObject obj3 = (JSONObject) obj2.get(0);
-//				JSONArray obj4 = (JSONArray) obj3.get("series");
-//				JSONObject obj5 = (JSONObject) obj4.get(0);
-//				JSONArray obj6 = (JSONArray) obj5.get("values");
-//
-//				String[] values = (obj6.get(0).toString()).split(",");
-//				getLowProgressRunningMaps
-//						.add(Double.parseDouble(values[1].replace("]", "").replace("\"", "").replace("\\", "")));
-//
-//			} catch (Exception e) {
-//				System.out.println("no getLowProgressRunningMaps!");
-//				getLowProgressRunningMaps = null;
-//			}
-//		}
-//		return getLowProgressRunningMaps;
-//	}
+		List<String> runningMapsName = getRunningMapsName(jobId); // ???
+
+		int runningMapsNum = runningMapsName.size();
+
+//		int totalNodes = getClusterTotalDataNodes(jobId);
+
+		List<Double> getRunningMapsProgress = new ArrayList<Double>();
+
+		query.setMeasurement("sigar");
+		query.setLimit(1000);
+		query.fillNullValues("0");
+		DataReader dataReader = new DataReader(query, configuration);
+		ResultSet resultSet = dataReader.getResult();
+		Query query1 = new Query();
+
+		for (int i = 0; i < runningMapsNum; i++) {
+			try {
+				query1.setCustomQuery(
+						"select progress from map where mapId='" + runningMapsName.get(i) + "' order by desc limit 1");
+				dataReader.setQuery(query1);
+				resultSet = dataReader.getResult();
+				Gson gson = new Gson();
+				String jsonStr = gson.toJson(resultSet);
+				JSONParser parser = new JSONParser();
+				JSONObject obj = (JSONObject) parser.parse(jsonStr);
+				JSONArray obj2 = (JSONArray) obj.get("results");
+				JSONObject obj3 = (JSONObject) obj2.get(0);
+				JSONArray obj4 = (JSONArray) obj3.get("series");
+				JSONObject obj5 = (JSONObject) obj4.get(0);
+				JSONArray obj6 = (JSONArray) obj5.get("values");
+
+				String[] values = (obj6.get(0).toString()).split(",");
+				getRunningMapsProgress
+						.add(Double.parseDouble(values[1].replace("]", "").replace("\"", "").replace("\\", "")));
+
+			} catch (Exception e) {
+				System.out.println("no getRunningMapsProgress!");
+				getRunningMapsProgress = null;
+			}
+		}
+		return getRunningMapsProgress;
+	}
+
+	public static List<Double> getLowProgressRunningMaps(String jobId)
+			throws IOException, URISyntaxException, ParseException {
+
+		List<String> getLowProgressRunningMapsName = getLowProgressRunningMapsName(jobId);
+
+		int getLowProgressRunningMapsNum = getLowProgressRunningMapsName.size();
+
+//		int totalNodes = getClusterTotalDataNodes(jobId);
+
+		List<Double> getLowProgressRunningMaps = new ArrayList<Double>();
+
+		query.setMeasurement("sigar");
+		query.setLimit(1000);
+		query.fillNullValues("0");
+		DataReader dataReader = new DataReader(query, configuration);
+		ResultSet resultSet = dataReader.getResult();
+		Query query1 = new Query();
+
+		for (int i = 0; i < getLowProgressRunningMapsNum; i++) {
+			try {
+				query1.setCustomQuery("select progress from map where mapId='" + getLowProgressRunningMapsName.get(i)
+						+ "' order by desc limit 1");
+				dataReader.setQuery(query1);
+				resultSet = dataReader.getResult();
+				Gson gson = new Gson();
+				String jsonStr = gson.toJson(resultSet);
+				JSONParser parser = new JSONParser();
+				JSONObject obj = (JSONObject) parser.parse(jsonStr);
+				JSONArray obj2 = (JSONArray) obj.get("results");
+				JSONObject obj3 = (JSONObject) obj2.get(0);
+				JSONArray obj4 = (JSONArray) obj3.get("series");
+				JSONObject obj5 = (JSONObject) obj4.get(0);
+				JSONArray obj6 = (JSONArray) obj5.get("values");
+
+				String[] values = (obj6.get(0).toString()).split(",");
+				getLowProgressRunningMaps
+						.add(Double.parseDouble(values[1].replace("]", "").replace("\"", "").replace("\\", "")));
+
+			} catch (Exception e) {
+				System.out.println("no getLowProgressRunningMaps!");
+				getLowProgressRunningMaps = null;
+			}
+		}
+		return getLowProgressRunningMaps;
+	}
 
 //	public static List<Integer> getHighExecutionTimeRunningMaps(String jobId)
 //			throws IOException, URISyntaxException, ParseException {
@@ -2927,83 +3023,83 @@ public class SmartReader {
 //		return getHighExecutionTimeRunningMaps;
 //	}
 
-//	public static List<String> getLowestMapSpecs(String jobId)
-//			throws IOException, URISyntaxException, ParseException, InterruptedException {
-//
-//		List<String> getSlowestMapSpecs = new ArrayList<String>();
-//		String getSlowestMapName = "";
-//		String getSlowestMapHostName = "";
-//
-//		List<Double> getRunningMapsPerformance = new ArrayList<Double>();
-//		List<String> getRunningMapsName = new ArrayList<String>();
-//		List<String> getRunningMapsHostName = new ArrayList<String>();
-//
-//		if (!(getRunningMapsPerformance(jobId) == null)) {
-//			getRunningMapsPerformance = getRunningMapsPerformance(jobId);
-//		}
-//
-//		if (!(getRunningMapsName(jobId) == null)) {
-//			getRunningMapsName = getRunningMapsName(jobId);
-//		}
-//
-//		if (!(getRunningMapsHostName(jobId) == null)) {
-//			getRunningMapsHostName = getRunningMapsHostName(jobId);
-//		}
-//		if (getRunningMapsPerformance.size() > 0) {
-//
-//			int slowestMapIndex = getRunningMapsPerformance.indexOf(Collections.min(getRunningMapsPerformance));
-//
-//			getSlowestMapSpecs.add(getRunningMapsName.get(slowestMapIndex));
-//			getSlowestMapSpecs.add(getRunningMapsHostName.get(slowestMapIndex));
-//		}
-//
-//		return getSlowestMapSpecs;
-//	}
+	public static List<String> getLowestMapSpecs(String jobId)
+			throws IOException, URISyntaxException, ParseException, InterruptedException {
 
-//	public static List<String> getLowProgressRunningMapsHostName(String jobId)
-//			throws IOException, URISyntaxException, ParseException {
-//
-//		List<String> lowProgressRunningMapsName = getLowProgressRunningMapsName(jobId);
-//
-//		int lowProgressRunningMapsNum = lowProgressRunningMapsName.size();
-//
-////		int totalNodes = getClusterTotalDataNodes(jobId);
-//
-//		List<String> getLowProgressRunningMapsHostName = new ArrayList<String>();
-//
-//		query.setMeasurement("sigar");
-//		query.setLimit(1000);
-//		query.fillNullValues("0");
-//		DataReader dataReader = new DataReader(query, configuration);
-//		ResultSet resultSet = dataReader.getResult();
-//		Query query1 = new Query();
-//
-//		for (int i = 0; i < lowProgressRunningMapsNum; i++) {
-//			try {
-//				query1.setCustomQuery("select host from map where mapId='" + lowProgressRunningMapsName.get(i)
-//						+ "' and state='RUNNING' order by desc limit 1");
-//				dataReader.setQuery(query1);
-//				resultSet = dataReader.getResult();
-//				Gson gson = new Gson();
-//				String jsonStr = gson.toJson(resultSet);
-//				JSONParser parser = new JSONParser();
-//				JSONObject obj = (JSONObject) parser.parse(jsonStr);
-//				JSONArray obj2 = (JSONArray) obj.get("results");
-//				JSONObject obj3 = (JSONObject) obj2.get(0);
-//				JSONArray obj4 = (JSONArray) obj3.get("series");
-//				JSONObject obj5 = (JSONObject) obj4.get(0);
-//				JSONArray obj6 = (JSONArray) obj5.get("values");
-//
-//				String[] values = (obj6.get(0).toString()).split(",");
-//				getLowProgressRunningMapsHostName.add(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
-//
-//			} catch (Exception e) {
-//				System.out.println("no getLowProgressRunningMapsHostName!");
-//				getLowProgressRunningMapsHostName = null;
-//			}
-//		}
-//		return getLowProgressRunningMapsHostName;
-//	}
+		List<String> getSlowestMapSpecs = new ArrayList<String>();
+		String getSlowestMapName = "";
+		String getSlowestMapHostName = "";
+
+		List<Double> getRunningMapsPerformance = new ArrayList<Double>();
+		List<String> getRunningMapsName = new ArrayList<String>();
+		List<String> getRunningMapsHostName = new ArrayList<String>();
+
+		if (!(getRunningMapsPerformance(jobId) == null)) {
+			getRunningMapsPerformance = getRunningMapsPerformance(jobId);
+		}
+
+		if (!(getRunningMapsName(jobId) == null)) {
+			getRunningMapsName = getRunningMapsName(jobId);
+		}
+
+		if (!(getRunningMapsHostName(jobId) == null)) {
+			getRunningMapsHostName = getRunningMapsHostName(jobId);
+		}
+		if (getRunningMapsPerformance.size() > 0) {
+
+			int slowestMapIndex = getRunningMapsPerformance.indexOf(Collections.min(getRunningMapsPerformance));
+
+			getSlowestMapSpecs.add(getRunningMapsName.get(slowestMapIndex));
+			getSlowestMapSpecs.add(getRunningMapsHostName.get(slowestMapIndex));
+		}
+
+		return getSlowestMapSpecs;
+	}
+
+	public static List<String> getLowProgressRunningMapsHostName(String jobId)
+			throws IOException, URISyntaxException, ParseException {
+
+		List<String> lowProgressRunningMapsName = getLowProgressRunningMapsName(jobId);
+
+		int lowProgressRunningMapsNum = lowProgressRunningMapsName.size();
+
+//		int totalNodes = getClusterTotalDataNodes(jobId);
+
+		List<String> getLowProgressRunningMapsHostName = new ArrayList<String>();
+
+		query.setMeasurement("sigar");
+		query.setLimit(1000);
+		query.fillNullValues("0");
+		DataReader dataReader = new DataReader(query, configuration);
+		ResultSet resultSet = dataReader.getResult();
+		Query query1 = new Query();
+
+		for (int i = 0; i < lowProgressRunningMapsNum; i++) {
+			try {
+				query1.setCustomQuery("select host from map where mapId='" + lowProgressRunningMapsName.get(i)
+						+ "' and state='RUNNING' order by desc limit 1");
+				dataReader.setQuery(query1);
+				resultSet = dataReader.getResult();
+				Gson gson = new Gson();
+				String jsonStr = gson.toJson(resultSet);
+				JSONParser parser = new JSONParser();
+				JSONObject obj = (JSONObject) parser.parse(jsonStr);
+				JSONArray obj2 = (JSONArray) obj.get("results");
+				JSONObject obj3 = (JSONObject) obj2.get(0);
+				JSONArray obj4 = (JSONArray) obj3.get("series");
+				JSONObject obj5 = (JSONObject) obj4.get(0);
+				JSONArray obj6 = (JSONArray) obj5.get("values");
+
+				String[] values = (obj6.get(0).toString()).split(",");
+				getLowProgressRunningMapsHostName.add(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
+
+			} catch (Exception e) {
+				System.out.println("no getLowProgressRunningMapsHostName!");
+				getLowProgressRunningMapsHostName = null;
+			}
+		}
+		return getLowProgressRunningMapsHostName;
+	}
 
 	public static List<String> getLowPerformanceRunningMapsHostName(String jobId)
 			throws IOException, URISyntaxException, ParseException, InterruptedException {
@@ -3012,8 +3108,8 @@ public class SmartReader {
 
 		List<String> lowPerformanceRunningMapsName = new ArrayList<String>();
 
-		for (int i = 0; i < DataLocality.lowPerformanceRunningMapsName1.size(); i++) {
-			lowPerformanceRunningMapsName.add(DataLocality.lowPerformanceRunningMapsName1.get(i));
+		for (int i = 0; i < lowPerformanceRunningMapsName1.size(); i++) {
+			lowPerformanceRunningMapsName.add(lowPerformanceRunningMapsName1.get(i));
 		}
 
 		int lowPerformanceRunningMapsNum = lowPerformanceRunningMapsName.size();
@@ -3402,227 +3498,227 @@ public class SmartReader {
 //		return runningMapsPerformance;
 //	}
 
-//	public static List<Double> getRunningMapsPerformance(String jobId)
-//			throws IOException, URISyntaxException, ParseException, InterruptedException {
-//
-//		List<Double> runningMapsPerformance = new ArrayList<Double>();
-//		List<Double> runningMapsPerformanceNorm = new ArrayList<Double>();
-//
-//		int executionTime = 0;
-//		double progress = 0;
-//		double result = 0;
-//
-//		query.setMeasurement("sigar");
-//		query.setLimit(1000);
-//		query.fillNullValues("0");
-//		DataReader dataReader = new DataReader(query, configuration);
-//		ResultSet resultSet = dataReader.getResult();
-//		Query query1 = new Query();
-//
-//		exacTimeListNorm.clear();
-//		progressListNorm.clear();
-//		runningMapsProgress1.clear();
-//		runningMapsExecutionTime1.clear();
-//
-//		if (!(runningMapsName1 == null)) {
-//			for (int k = 0; k < runningMapsName1.size(); k++) {
-//				try {
-//					query1.setCustomQuery("select executionTimeSec, progress from map where jobId='" + jobId
-//							+ "' and mapId='" + runningMapsName1.get(k) + "' order by desc limit 1");
-//					dataReader.setQuery(query1);
-//					resultSet = dataReader.getResult();
-//					Gson gson = new Gson();
-//					String jsonStr = gson.toJson(resultSet);
-//					JSONParser parser = new JSONParser();
-//					JSONObject obj = (JSONObject) parser.parse(jsonStr);
-//					JSONArray obj2 = (JSONArray) obj.get("results");
-//					JSONObject obj3 = (JSONObject) obj2.get(0);
-//					JSONArray obj4 = (JSONArray) obj3.get("series");
-//					JSONObject obj5 = (JSONObject) obj4.get(0);
-//					JSONArray obj6 = (JSONArray) obj5.get("values");
-//
-//					String[] values = (obj6.get(0).toString()).split(",");
-//					executionTime = Integer.parseInt(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
-//					progress = Double.parseDouble(values[2].replace("]", "").replace("\"", "").replace("\\", ""));
-//
-//					runningMapsProgress1.add(progress);
-//					runningMapsExecutionTime1.add(executionTime);
-//
-////				System.out.println("executionTime= " + executionTime + "     progress= " + progress);
-//
-////					if (executionTime == 0) {
-////						result = 0;
-////					} else
-////						result = progress / executionTime;
-//
-////				System.out.println("result= " + result);
-//
-//				} catch (Exception e) {
-//					System.out.println("no runningMapsPerformance!");
-//					runningMapsPerformance = null;
-//					runningMapsPerformanceNorm = null;
-//				}
-//			} // for
-//
-//			double min = Collections.min(runningMapsExecutionTime1);
-//			double max = Collections.max(runningMapsExecutionTime1);
-//			result = 0.0;
-//
-//			if (min != max) {
-//				for (int i = 0; i < runningMapsExecutionTime1.size(); i++) {
-//					result = (runningMapsExecutionTime1.get(i) - min) / (max - min);
-//					if (result == 0) {
-//						result = 0.1;
-//					}
-//					exacTimeListNorm.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
-//				}
-//			}
-//
-//			min = Collections.min(runningMapsProgress1);
-//			max = Collections.max(runningMapsProgress1);
-//			result = 0.0;
-//
-//			if (min != max) {
-//				for (int i = 0; i < runningMapsProgress1.size(); i++) {
-//					result = (runningMapsProgress1.get(i) - min) / (max - min);
-//					progressListNorm.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
-//				}
-//			}
-//
-//			for (int i = 0; i < progressListNorm.size(); i++) {
-//				result = progressListNorm.get(i) / exacTimeListNorm.get(i);
-//				result = Double.parseDouble(new DecimalFormat("##.##").format(result));
-//				runningMapsPerformanceNorm.add(result);
-//			}
-//
-//			runningMapsPerformanceNorm1.clear();
-//			runningMapsPerformanceNorm1 = runningMapsPerformanceNorm;
-//
-////			runningMapsPerformance.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
-//		}
-//		runningMapsPerformance1.clear();
-//		runningMapsPerformance1 = runningMapsPerformance;
-//		return runningMapsPerformance;
-//	}
+	public static List<Double> getRunningMapsPerformance(String jobId)
+			throws IOException, URISyntaxException, ParseException, InterruptedException {
 
-//	public static List<Double> getRunningMapsPerformanceNew(String jobId)
-//			throws IOException, URISyntaxException, ParseException, InterruptedException {
-//
-////		List<String> runningMapsName = new ArrayList<String>();
-//
-////		runningMapsName = runningMapsName1;
-//		int caseId = runningMapsCaseId;
-//
-////		System.out.println("runningMapsName in getRunningMapsPerformance = " + runningMapsName);
-//
-//		List<Double> runningMapsPerformance = new ArrayList<Double>();
-//		List<Double> runningMapsPerformanceNorm = new ArrayList<Double>();
-//		int executionTime = 0;
-//		double progress = 0;
-//		double result = 0;
-//
-//		exacTimeListNorm.clear();
-//		progressListNorm.clear();
-//		runningMapsProgress1.clear();
-//		runningMapsExecutionTime1.clear();
-//
-//		query.setMeasurement("sigar");
-//		query.setLimit(1000);
-//		query.fillNullValues("0");
-//		DataReader dataReader = new DataReader(query, configuration);
-//		ResultSet resultSet = dataReader.getResult();
-//		Query query1 = new Query();
-//
-//		runningMapsProgress1.clear();
-//		runningMapsExecutionTime1.clear();
-//
-//		if (!(runningMapsName1 == null)) {
-//
-//			for (int k = 0; k < runningMapsName1.size(); k++) {
-//				try {
-//					query1.setCustomQuery(
-//							"select executionTimeSec, progress from map where jobId='" + jobId + "' and mapId='"
-//									+ runningMapsName1.get(k) + "' and caseId='" + caseId + "' order by desc limit 1");
-//					dataReader.setQuery(query1);
-//					resultSet = dataReader.getResult();
-//					Gson gson = new Gson();
-//					String jsonStr = gson.toJson(resultSet);
-//					JSONParser parser = new JSONParser();
-//					JSONObject obj = (JSONObject) parser.parse(jsonStr);
-//					JSONArray obj2 = (JSONArray) obj.get("results");
-//					JSONObject obj3 = (JSONObject) obj2.get(0);
-//					JSONArray obj4 = (JSONArray) obj3.get("series");
-//					JSONObject obj5 = (JSONObject) obj4.get(0);
-//					JSONArray obj6 = (JSONArray) obj5.get("values");
-//
-//					String[] values = (obj6.get(0).toString()).split(",");
-//					executionTime = Integer.parseInt(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
-//					progress = Double.parseDouble(values[2].replace("]", "").replace("\"", "").replace("\\", ""));
-//
-//					runningMapsProgress1.add(progress);
-//					runningMapsExecutionTime1.add(executionTime);
-//
-////				System.out.println("executionTime= " + executionTime + "     progress= " + progress);
-//
-////					if (executionTime == 0) {
-////						result = 0;
-////					} else
-////						result = progress / executionTime;
-//
-////				System.out.println("result= " + result);
-//
-////					runningMapsPerformance.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
-//
-//				} catch (Exception e) {
-//					System.out.println("no runningMapsPerformance!");
-//					runningMapsPerformance = null;
-//					runningMapsPerformanceNorm = null;
-//				}
-//			} // for
-//
-//			double min = Collections.min(runningMapsExecutionTime1);
-//			double max = Collections.max(runningMapsExecutionTime1);
-//			result = 0.0;
-//
-//			if (min != max) {
-//				for (int i = 0; i < runningMapsExecutionTime1.size(); i++) {
-//					result = (runningMapsExecutionTime1.get(i) - min) / (max - min);
-//					if (result == 0.0) {
-//						result = 0.1;
-//					}
-//					exacTimeListNorm.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
-//				}
-//
-//				min = Collections.min(runningMapsProgress1);
-//				max = Collections.max(runningMapsProgress1);
-//				result = 0.0;
-//
-//				if (min != max) {
-//					for (int i = 0; i < runningMapsProgress1.size(); i++) {
-//						result = (runningMapsProgress1.get(i) - min) / (max - min);
-//						progressListNorm.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
-//					}
-//
-//					for (int i = 0; i < runningMapsName1.size(); i++) {
-//						if (!(progressListNorm.get(i) == 0.0) && !(exacTimeListNorm.get(i) == 0.0)) {
-//							result = progressListNorm.get(i) / exacTimeListNorm.get(i);
-//						} else {
-//							result = 0.0;
-//						}
-//
-//						result = Double.parseDouble(new DecimalFormat("##.##").format(result));
-//						runningMapsPerformanceNorm.add(result);
-//					}
-//				}
-//			}
-//
-//			runningMapsPerformanceNorm1.clear();
-//			runningMapsPerformanceNorm1 = runningMapsPerformanceNorm;
-//		}
-//		runningMapsPerformance1.clear();
-//		runningMapsPerformance1 = runningMapsPerformanceNorm;
-//		return runningMapsPerformanceNorm;
-//	}
+		List<Double> runningMapsPerformance = new ArrayList<Double>();
+		List<Double> runningMapsPerformanceNorm = new ArrayList<Double>();
+
+		int executionTime = 0;
+		double progress = 0;
+		double result = 0;
+
+		query.setMeasurement("sigar");
+		query.setLimit(1000);
+		query.fillNullValues("0");
+		DataReader dataReader = new DataReader(query, configuration);
+		ResultSet resultSet = dataReader.getResult();
+		Query query1 = new Query();
+
+		exacTimeListNorm.clear();
+		progressListNorm.clear();
+		runningMapsProgress1.clear();
+		runningMapsExecutionTime1.clear();
+
+		if (!(runningMapsName1 == null)) {
+			for (int k = 0; k < runningMapsName1.size(); k++) {
+				try {
+					query1.setCustomQuery("select executionTimeSec, progress from map where jobId='" + jobId
+							+ "' and mapId='" + runningMapsName1.get(k) + "' order by desc limit 1");
+					dataReader.setQuery(query1);
+					resultSet = dataReader.getResult();
+					Gson gson = new Gson();
+					String jsonStr = gson.toJson(resultSet);
+					JSONParser parser = new JSONParser();
+					JSONObject obj = (JSONObject) parser.parse(jsonStr);
+					JSONArray obj2 = (JSONArray) obj.get("results");
+					JSONObject obj3 = (JSONObject) obj2.get(0);
+					JSONArray obj4 = (JSONArray) obj3.get("series");
+					JSONObject obj5 = (JSONObject) obj4.get(0);
+					JSONArray obj6 = (JSONArray) obj5.get("values");
+
+					String[] values = (obj6.get(0).toString()).split(",");
+					executionTime = Integer.parseInt(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
+					progress = Double.parseDouble(values[2].replace("]", "").replace("\"", "").replace("\\", ""));
+
+					runningMapsProgress1.add(progress);
+					runningMapsExecutionTime1.add(executionTime);
+
+//				System.out.println("executionTime= " + executionTime + "     progress= " + progress);
+
+//					if (executionTime == 0) {
+//						result = 0;
+//					} else
+//						result = progress / executionTime;
+
+//				System.out.println("result= " + result);
+
+				} catch (Exception e) {
+					System.out.println("no runningMapsPerformance!");
+					runningMapsPerformance = null;
+					runningMapsPerformanceNorm = null;
+				}
+			} // for
+
+			double min = Collections.min(runningMapsExecutionTime1);
+			double max = Collections.max(runningMapsExecutionTime1);
+			result = 0.0;
+
+			if (min != max) {
+				for (int i = 0; i < runningMapsExecutionTime1.size(); i++) {
+					result = (runningMapsExecutionTime1.get(i) - min) / (max - min);
+					if (result == 0) {
+						result = 0.1;
+					}
+					exacTimeListNorm.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
+				}
+			}
+
+			min = Collections.min(runningMapsProgress1);
+			max = Collections.max(runningMapsProgress1);
+			result = 0.0;
+
+			if (min != max) {
+				for (int i = 0; i < runningMapsProgress1.size(); i++) {
+					result = (runningMapsProgress1.get(i) - min) / (max - min);
+					progressListNorm.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
+				}
+			}
+
+			for (int i = 0; i < progressListNorm.size(); i++) {
+				result = progressListNorm.get(i) / exacTimeListNorm.get(i);
+				result = Double.parseDouble(new DecimalFormat("##.##").format(result));
+				runningMapsPerformanceNorm.add(result);
+			}
+
+			runningMapsPerformanceNorm1.clear();
+			runningMapsPerformanceNorm1 = runningMapsPerformanceNorm;
+
+//			runningMapsPerformance.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
+		}
+		runningMapsPerformance1.clear();
+		runningMapsPerformance1 = runningMapsPerformance;
+		return runningMapsPerformance;
+	}
+
+	public static List<Double> getRunningMapsPerformanceNew(String jobId)
+			throws IOException, URISyntaxException, ParseException, InterruptedException {
+
+//		List<String> runningMapsName = new ArrayList<String>();
+
+//		runningMapsName = runningMapsName1;
+		int caseId = runningMapsCaseId;
+
+//		System.out.println("runningMapsName in getRunningMapsPerformance = " + runningMapsName);
+
+		List<Double> runningMapsPerformance = new ArrayList<Double>();
+		List<Double> runningMapsPerformanceNorm = new ArrayList<Double>();
+		int executionTime = 0;
+		double progress = 0;
+		double result = 0;
+
+		exacTimeListNorm.clear();
+		progressListNorm.clear();
+		runningMapsProgress1.clear();
+		runningMapsExecutionTime1.clear();
+
+		query.setMeasurement("sigar");
+		query.setLimit(1000);
+		query.fillNullValues("0");
+		DataReader dataReader = new DataReader(query, configuration);
+		ResultSet resultSet = dataReader.getResult();
+		Query query1 = new Query();
+
+		runningMapsProgress1.clear();
+		runningMapsExecutionTime1.clear();
+
+		if (!(runningMapsName1 == null)) {
+
+			for (int k = 0; k < runningMapsName1.size(); k++) {
+				try {
+					query1.setCustomQuery(
+							"select elapsedTimeSec, progress from map where jobId='" + jobId + "' and mapId='"
+									+ runningMapsName1.get(k) + "' and caseId='" + caseId + "' order by desc limit 1");
+					dataReader.setQuery(query1);
+					resultSet = dataReader.getResult();
+					Gson gson = new Gson();
+					String jsonStr = gson.toJson(resultSet);
+					JSONParser parser = new JSONParser();
+					JSONObject obj = (JSONObject) parser.parse(jsonStr);
+					JSONArray obj2 = (JSONArray) obj.get("results");
+					JSONObject obj3 = (JSONObject) obj2.get(0);
+					JSONArray obj4 = (JSONArray) obj3.get("series");
+					JSONObject obj5 = (JSONObject) obj4.get(0);
+					JSONArray obj6 = (JSONArray) obj5.get("values");
+
+					String[] values = (obj6.get(0).toString()).split(",");
+					executionTime = Integer.parseInt(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
+					progress = Double.parseDouble(values[2].replace("]", "").replace("\"", "").replace("\\", ""));
+
+					runningMapsProgress1.add(progress);
+					runningMapsExecutionTime1.add(executionTime);
+
+//				System.out.println("executionTime= " + executionTime + "     progress= " + progress);
+
+//					if (executionTime == 0) {
+//						result = 0;
+//					} else
+//						result = progress / executionTime;
+
+//				System.out.println("result= " + result);
+
+//					runningMapsPerformance.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
+
+				} catch (Exception e) {
+					System.out.println("no runningMapsPerformance!");
+					runningMapsPerformance = null;
+					runningMapsPerformanceNorm = null;
+				}
+			} // for
+
+			double min = Collections.min(runningMapsExecutionTime1);
+			double max = Collections.max(runningMapsExecutionTime1);
+			result = 0.0;
+
+			if (min != max) {
+				for (int i = 0; i < runningMapsExecutionTime1.size(); i++) {
+					result = (runningMapsExecutionTime1.get(i) - min) / (max - min);
+					if (result == 0.0) {
+						result = 0.1;
+					}
+					exacTimeListNorm.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
+				}
+
+				min = Collections.min(runningMapsProgress1);
+				max = Collections.max(runningMapsProgress1);
+				result = 0.0;
+
+				if (min != max) {
+					for (int i = 0; i < runningMapsProgress1.size(); i++) {
+						result = (runningMapsProgress1.get(i) - min) / (max - min);
+						progressListNorm.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
+					}
+
+					for (int i = 0; i < runningMapsName1.size(); i++) {
+						if (!(progressListNorm.get(i) == 0.0) && !(exacTimeListNorm.get(i) == 0.0)) {
+							result = progressListNorm.get(i) / exacTimeListNorm.get(i);
+						} else {
+							result = 0.0;
+						}
+
+						result = Double.parseDouble(new DecimalFormat("##.##").format(result));
+						runningMapsPerformanceNorm.add(result);
+					}
+				}
+			}
+
+			runningMapsPerformanceNorm1.clear();
+			runningMapsPerformanceNorm1 = runningMapsPerformanceNorm;
+		}
+		runningMapsPerformance1.clear();
+		runningMapsPerformance1 = runningMapsPerformanceNorm;
+		return runningMapsPerformanceNorm;
+	}
 
 //	public static double getRunningMapsAveragePerformanceOLD(String jobId)
 //			throws IOException, URISyntaxException, ParseException { // ?????????????????????????????????????????????
@@ -3643,66 +3739,66 @@ public class SmartReader {
 //		return mapsAveragePerformance;
 //	}
 
-//	public static double getRunningMapsAveragePerformance(String jobId)
-//			throws IOException, URISyntaxException, ParseException {
-//
-//		double mapsPerformanceMedian = 0;
-//		int n = 0;
-//
-//		List<Double> runningMapsPerformance = new ArrayList<>();
-//
-//		try {
-////			runningMapsPerformance = getRunningMapsPerformance(jobId);
-//
-////			runningMapsPerformance = runningMapsPerformance1;
-//
-//			for (int i = 0; i < runningMapsPerformanceNorm1.size(); i++) {
-//				runningMapsPerformance.add(runningMapsPerformanceNorm1.get(i));
-//			}
-//
-//			Collections.sort(runningMapsPerformance);
-//
-//			n = runningMapsPerformance.size();
-//
-//			if (n % 2 != 0) {
-//				mapsPerformanceMedian = runningMapsPerformance.get(n / 2);
-//			} else
-//				mapsPerformanceMedian = (runningMapsPerformance.get((n - 1) / 2) + runningMapsPerformance.get(n / 2))
-//						/ 2;
-//
-//		} catch (Exception e) {
-////			System.out.println("no mapsPerformanceMedian!");
-//			mapsPerformanceMedian = 0;
-//		}
-//		runningMapsPerformanceMedian1 = (Double.parseDouble(new DecimalFormat("##.##").format(mapsPerformanceMedian)));
-//		return mapsPerformanceMedian;
-//	}
+	public static double getRunningMapsAveragePerformance(String jobId)
+			throws IOException, URISyntaxException, ParseException {
 
-//	public static List<String> getLowProgressRunningMapsName(String jobId)
-//			throws IOException, URISyntaxException, ParseException {
-//
-//		List<String> lowProgressRunningMapsName = new ArrayList<String>();
-//
-//		List<Double> getConfidenceInterval = getRunningMapsProgressConfidenceInterval(jobId);
-//		double lower = getConfidenceInterval.get(0);
-//		double upper = getConfidenceInterval.get(1);
-//
-//		List<String> runningMapsName = new ArrayList<String>();
-//
-//		if (!(getRunningMapsName(jobId) == null)) {
-//			runningMapsName = getRunningMapsName(jobId);
-//		}
-//
-//		List<Double> runningMapsProgress = getRunningMapsProgress(jobId);
-//
-//		for (int i = 0; i < runningMapsProgress.size(); i++) {
-//			if (runningMapsProgress.get(i) < lower) {
-//				lowProgressRunningMapsName.add(runningMapsName.get(i));
-//			}
-//		}
-//
-//		return lowProgressRunningMapsName;
-//	}
+		double mapsPerformanceMedian = 0;
+		int n = 0;
+
+		List<Double> runningMapsPerformance = new ArrayList<>();
+
+		try {
+//			runningMapsPerformance = getRunningMapsPerformance(jobId);
+
+//			runningMapsPerformance = runningMapsPerformance1;
+
+			for (int i = 0; i < runningMapsPerformanceNorm1.size(); i++) {
+				runningMapsPerformance.add(runningMapsPerformanceNorm1.get(i));
+			}
+
+			Collections.sort(runningMapsPerformance);
+
+			n = runningMapsPerformance.size();
+
+			if (n % 2 != 0) {
+				mapsPerformanceMedian = runningMapsPerformance.get(n / 2);
+			} else
+				mapsPerformanceMedian = (runningMapsPerformance.get((n - 1) / 2) + runningMapsPerformance.get(n / 2))
+						/ 2;
+
+		} catch (Exception e) {
+//			System.out.println("no mapsPerformanceMedian!");
+			mapsPerformanceMedian = 0;
+		}
+		runningMapsPerformanceMedian1 = (Double.parseDouble(new DecimalFormat("##.##").format(mapsPerformanceMedian)));
+		return mapsPerformanceMedian;
+	}
+
+	public static List<String> getLowProgressRunningMapsName(String jobId)
+			throws IOException, URISyntaxException, ParseException {
+
+		List<String> lowProgressRunningMapsName = new ArrayList<String>();
+
+		List<Double> getConfidenceInterval = getRunningMapsProgressConfidenceInterval(jobId);
+		double lower = getConfidenceInterval.get(0);
+		double upper = getConfidenceInterval.get(1);
+
+		List<String> runningMapsName = new ArrayList<String>();
+
+		if (!(getRunningMapsName(jobId) == null)) {
+			runningMapsName = getRunningMapsName(jobId);
+		}
+
+		List<Double> runningMapsProgress = getRunningMapsProgress(jobId);
+
+		for (int i = 0; i < runningMapsProgress.size(); i++) {
+			if (runningMapsProgress.get(i) < lower) {
+				lowProgressRunningMapsName.add(runningMapsName.get(i));
+			}
+		}
+
+		return lowProgressRunningMapsName;
+	}
 
 //	public static List<String> getLowPerformanceRunningMapsNameOLD(String jobId) //// NOT USING
 //			throws IOException, URISyntaxException, ParseException {
@@ -3728,42 +3824,43 @@ public class SmartReader {
 //		return lowPerformanceRunningMapsName;
 //	}
 
-//	public static List<String> getLowPerformanceRunningMapsName(String jobId)
-//			throws IOException, URISyntaxException, ParseException, InterruptedException {
-//
-////		List<String> runningMapsName = new ArrayList<String>();
-//
-//		List<String> lowPerformanceRunningMapsName = new ArrayList<String>();
-//
+	public static List<String> getLowPerformanceRunningMapsName(String jobId)
+			throws IOException, URISyntaxException, ParseException, InterruptedException {
+
+//		List<String> runningMapsName = new ArrayList<String>();
+
+		List<String> lowPerformanceRunningMapsName = new ArrayList<String>();
+
 //		getRunningMapsNameNew(jobId);
-//
-//		if (!(runningMapsName1 == null)) {
-//
-////			List<Double> runningMapsPerformance = getRunningMapsPerformance(jobId);
-//
-//			List<Double> runningMapsPerformance = getRunningMapsPerformanceNew(jobId);
-//
-////			System.out.println("runningMapsPerformance xxx " + runningMapsPerformance);
-//
-//			double runningMapsPerformanceMedian = getRunningMapsAveragePerformance(jobId);
-//
-////			System.out.println("runningMapsPerformanceMedian xxx " + runningMapsPerformanceMedian);
-////			System.out.println();
-//
-//			if (runningMapsPerformance.size() > 0) {
-//				for (int i = 0; i < runningMapsPerformance.size(); i++) {
-//					if (runningMapsPerformance.get(i) * factor < runningMapsPerformanceMedian) {
-//						lowPerformanceRunningMapsName.add(runningMapsName1.get(i));
-//					}
-//				}
-//			}
-//
-//			lowPerformanceRunningMapsName1.clear();
-//			lowPerformanceRunningMapsName1 = lowPerformanceRunningMapsName;
-//
-//		}
-//		return lowPerformanceRunningMapsName;
-//	}
+		getRunningMapsNameNew2(jobId);
+
+		if (!(runningMapsName1 == null)) {
+
+//			List<Double> runningMapsPerformance = getRunningMapsPerformance(jobId);
+
+			List<Double> runningMapsPerformance = getRunningMapsPerformanceNew(jobId);
+
+//			System.out.println("runningMapsPerformance xxx " + runningMapsPerformance);
+
+			double runningMapsPerformanceMedian = getRunningMapsAveragePerformance(jobId);
+
+//			System.out.println("runningMapsPerformanceMedian xxx " + runningMapsPerformanceMedian);
+//			System.out.println();
+
+			if (runningMapsPerformance.size() > 0) {
+				for (int i = 0; i < runningMapsPerformance.size(); i++) {
+					if (runningMapsPerformance.get(i) * factor < runningMapsPerformanceMedian) {
+						lowPerformanceRunningMapsName.add(runningMapsName1.get(i));
+					}
+				}
+			}
+
+			lowPerformanceRunningMapsName1.clear();
+			lowPerformanceRunningMapsName1 = lowPerformanceRunningMapsName;
+
+		}
+		return lowPerformanceRunningMapsName;
+	}
 
 //	public static List<String> getHighExecutionTimeRunningMapsName(String jobId)
 //			throws IOException, URISyntaxException, ParseException {
@@ -3791,127 +3888,127 @@ public class SmartReader {
 //		return getHighExecutionTimeRunningMapsName;
 //	}
 
-//	public static List<Double> getLocalRunningMapsPerformance(String jobId)
-//			throws IOException, URISyntaxException, ParseException {
-//
-//		List<String> localRunningMapsName = new ArrayList<String>();
-//		int localRunningMapsNum = 0;
-//
-//		if (!(getRunningMapsName(jobId) == null)) {
-//			localRunningMapsName = getLocalRunningMapsName(jobId);
-//			localRunningMapsNum = localRunningMapsName.size();
-//		}
-//
-//		List<Double> localRunningMapsPerformance = new ArrayList<Double>();
-//		int executionTime = 0;
-//		double progress = 0;
-//		double result = 0;
-//
-//		query.setMeasurement("sigar");
-//		query.setLimit(1000);
-//		query.fillNullValues("0");
-//		DataReader dataReader = new DataReader(query, configuration);
-//		ResultSet resultSet = dataReader.getResult();
-//		Query query1 = new Query();
-//
-//		for (int k = 0; k < localRunningMapsNum; k++) {
-//			try {
-//				query1.setCustomQuery("select executionTimeSec, progress from map where jobId='" + jobId
-//						+ "' and mapId='" + localRunningMapsName.get(k) + "' order by desc limit 1");
-//				dataReader.setQuery(query1);
-//				resultSet = dataReader.getResult();
-//				Gson gson = new Gson();
-//				String jsonStr = gson.toJson(resultSet);
-//				JSONParser parser = new JSONParser();
-//				JSONObject obj = (JSONObject) parser.parse(jsonStr);
-//				JSONArray obj2 = (JSONArray) obj.get("results");
-//				JSONObject obj3 = (JSONObject) obj2.get(0);
-//				JSONArray obj4 = (JSONArray) obj3.get("series");
-//				JSONObject obj5 = (JSONObject) obj4.get(0);
-//				JSONArray obj6 = (JSONArray) obj5.get("values");
-//
-//				String[] values = (obj6.get(0).toString()).split(",");
-//				executionTime = Integer.parseInt(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
-//				progress = Double.parseDouble(values[2].replace("]", "").replace("\"", "").replace("\\", ""));
-//
-////				System.out.println("executionTime= " + executionTime + "     progress= " + progress);
-//
-//				if (executionTime == 0) {
-//					result = 0;
-//				} else
-//					result = progress / executionTime;
-//
-//				localRunningMapsPerformance.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
-//
-//			} catch (Exception e) {
-//				System.out.println("no localRunningMapsPerformance!");
-////				runningMapsPerformance = null;
-//				localRunningMapsPerformance.add(0.0);
-//			}
-//		}
-//		return localRunningMapsPerformance;
-//	}
+	public static List<Double> getLocalRunningMapsPerformance(String jobId)
+			throws IOException, URISyntaxException, ParseException {
 
-//	public static List<Double> getNonLocalRunningMapsPerformance(String jobId)
-//			throws IOException, URISyntaxException, ParseException {
-//
-//		List<String> nonLocalRunningMapsName = new ArrayList<String>();
-//		int nonLocalRunningMapsNum = 0;
-//
-//		if (!(getRunningMapsName(jobId) == null)) {
-//			nonLocalRunningMapsName = getNonLocalRunningMapsName(jobId);
-//			nonLocalRunningMapsNum = nonLocalRunningMapsName.size();
-//		}
-//
-//		List<Double> nonLocalRunningMapsPerformance = new ArrayList<Double>();
-//		int executionTime = 0;
-//		double progress = 0;
-//		double result = 0;
-//
-//		query.setMeasurement("sigar");
-//		query.setLimit(1000);
-//		query.fillNullValues("0");
-//		DataReader dataReader = new DataReader(query, configuration);
-//		ResultSet resultSet = dataReader.getResult();
-//		Query query1 = new Query();
-//
-//		for (int k = 0; k < nonLocalRunningMapsNum; k++) {
-//			try {
-//				query1.setCustomQuery("select executionTimeSec, progress from map where jobId='" + jobId
-//						+ "' and mapId='" + nonLocalRunningMapsName.get(k) + "' order by desc limit 1");
-//				dataReader.setQuery(query1);
-//				resultSet = dataReader.getResult();
-//				Gson gson = new Gson();
-//				String jsonStr = gson.toJson(resultSet);
-//				JSONParser parser = new JSONParser();
-//				JSONObject obj = (JSONObject) parser.parse(jsonStr);
-//				JSONArray obj2 = (JSONArray) obj.get("results");
-//				JSONObject obj3 = (JSONObject) obj2.get(0);
-//				JSONArray obj4 = (JSONArray) obj3.get("series");
-//				JSONObject obj5 = (JSONObject) obj4.get(0);
-//				JSONArray obj6 = (JSONArray) obj5.get("values");
-//
-//				String[] values = (obj6.get(0).toString()).split(",");
-//				executionTime = Integer.parseInt(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
-//				progress = Double.parseDouble(values[2].replace("]", "").replace("\"", "").replace("\\", ""));
-//
-////				System.out.println("executionTime= " + executionTime + "     progress= " + progress);
-//
-//				if (executionTime == 0) {
-//					result = 0;
-//				} else
-//					result = progress / executionTime;
-//
-//				nonLocalRunningMapsPerformance.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
-//
-//			} catch (Exception e) {
-//				System.out.println("no nonLocalRunningMapsPerformance!");
-////				runningMapsPerformance = null;
-//				nonLocalRunningMapsPerformance.add(0.0);
-//			}
-//		}
-//		return nonLocalRunningMapsPerformance;
-//	}
+		List<String> localRunningMapsName = new ArrayList<String>();
+		int localRunningMapsNum = 0;
+
+		if (!(getRunningMapsName(jobId) == null)) {
+			localRunningMapsName = getLocalRunningMapsName(jobId);
+			localRunningMapsNum = localRunningMapsName.size();
+		}
+
+		List<Double> localRunningMapsPerformance = new ArrayList<Double>();
+		int executionTime = 0;
+		double progress = 0;
+		double result = 0;
+
+		query.setMeasurement("sigar");
+		query.setLimit(1000);
+		query.fillNullValues("0");
+		DataReader dataReader = new DataReader(query, configuration);
+		ResultSet resultSet = dataReader.getResult();
+		Query query1 = new Query();
+
+		for (int k = 0; k < localRunningMapsNum; k++) {
+			try {
+				query1.setCustomQuery("select executionTimeSec, progress from map where jobId='" + jobId
+						+ "' and mapId='" + localRunningMapsName.get(k) + "' order by desc limit 1");
+				dataReader.setQuery(query1);
+				resultSet = dataReader.getResult();
+				Gson gson = new Gson();
+				String jsonStr = gson.toJson(resultSet);
+				JSONParser parser = new JSONParser();
+				JSONObject obj = (JSONObject) parser.parse(jsonStr);
+				JSONArray obj2 = (JSONArray) obj.get("results");
+				JSONObject obj3 = (JSONObject) obj2.get(0);
+				JSONArray obj4 = (JSONArray) obj3.get("series");
+				JSONObject obj5 = (JSONObject) obj4.get(0);
+				JSONArray obj6 = (JSONArray) obj5.get("values");
+
+				String[] values = (obj6.get(0).toString()).split(",");
+				executionTime = Integer.parseInt(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
+				progress = Double.parseDouble(values[2].replace("]", "").replace("\"", "").replace("\\", ""));
+
+//				System.out.println("executionTime= " + executionTime + "     progress= " + progress);
+
+				if (executionTime == 0) {
+					result = 0;
+				} else
+					result = progress / executionTime;
+
+				localRunningMapsPerformance.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
+
+			} catch (Exception e) {
+				System.out.println("no localRunningMapsPerformance!");
+//				runningMapsPerformance = null;
+				localRunningMapsPerformance.add(0.0);
+			}
+		}
+		return localRunningMapsPerformance;
+	}
+
+	public static List<Double> getNonLocalRunningMapsPerformance(String jobId)
+			throws IOException, URISyntaxException, ParseException {
+
+		List<String> nonLocalRunningMapsName = new ArrayList<String>();
+		int nonLocalRunningMapsNum = 0;
+
+		if (!(getRunningMapsName(jobId) == null)) {
+			nonLocalRunningMapsName = getNonLocalRunningMapsName(jobId);
+			nonLocalRunningMapsNum = nonLocalRunningMapsName.size();
+		}
+
+		List<Double> nonLocalRunningMapsPerformance = new ArrayList<Double>();
+		int executionTime = 0;
+		double progress = 0;
+		double result = 0;
+
+		query.setMeasurement("sigar");
+		query.setLimit(1000);
+		query.fillNullValues("0");
+		DataReader dataReader = new DataReader(query, configuration);
+		ResultSet resultSet = dataReader.getResult();
+		Query query1 = new Query();
+
+		for (int k = 0; k < nonLocalRunningMapsNum; k++) {
+			try {
+				query1.setCustomQuery("select executionTimeSec, progress from map where jobId='" + jobId
+						+ "' and mapId='" + nonLocalRunningMapsName.get(k) + "' order by desc limit 1");
+				dataReader.setQuery(query1);
+				resultSet = dataReader.getResult();
+				Gson gson = new Gson();
+				String jsonStr = gson.toJson(resultSet);
+				JSONParser parser = new JSONParser();
+				JSONObject obj = (JSONObject) parser.parse(jsonStr);
+				JSONArray obj2 = (JSONArray) obj.get("results");
+				JSONObject obj3 = (JSONObject) obj2.get(0);
+				JSONArray obj4 = (JSONArray) obj3.get("series");
+				JSONObject obj5 = (JSONObject) obj4.get(0);
+				JSONArray obj6 = (JSONArray) obj5.get("values");
+
+				String[] values = (obj6.get(0).toString()).split(",");
+				executionTime = Integer.parseInt(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
+				progress = Double.parseDouble(values[2].replace("]", "").replace("\"", "").replace("\\", ""));
+
+//				System.out.println("executionTime= " + executionTime + "     progress= " + progress);
+
+				if (executionTime == 0) {
+					result = 0;
+				} else
+					result = progress / executionTime;
+
+				nonLocalRunningMapsPerformance.add(Double.parseDouble(new DecimalFormat("##.##").format(result)));
+
+			} catch (Exception e) {
+				System.out.println("no nonLocalRunningMapsPerformance!");
+//				runningMapsPerformance = null;
+				nonLocalRunningMapsPerformance.add(0.0);
+			}
+		}
+		return nonLocalRunningMapsPerformance;
+	}
 
 //	public static List<Double> checkRunningReducesPerformance(String jobId)
 //			throws IOException, URISyntaxException, ParseException {
@@ -4041,53 +4138,53 @@ public class SmartReader {
 		return jobPerformance;
 	}
 
-//	public static List<Integer> getRunningMapsExecutionTime(String jobId)
-//			throws IOException, URISyntaxException, ParseException {
-//
-//		List<String> runningMapsName = getRunningMapsName(jobId);
-//
-//		int runningMapsNum = 0;
-//
-//		if (!(runningMapsName == null)) {
-//			runningMapsNum = runningMapsName.size();
-//		}
-//
-//		List<Integer> getRunningMapsExecutionTime = new ArrayList<Integer>();
-//
-//		query.setMeasurement("sigar");
-//		query.setLimit(1000);
-//		query.fillNullValues("0");
-//		DataReader dataReader = new DataReader(query, configuration);
-//		ResultSet resultSet = dataReader.getResult();
-//		Query query1 = new Query();
-//
-//		for (int k = 0; k < runningMapsNum; k++) {
-//			try {
-//				query1.setCustomQuery("select executionTimeSec from map where mapId='" + runningMapsName.get(k)
-//						+ "' order by desc limit 1");
-//				dataReader.setQuery(query1);
-//				resultSet = dataReader.getResult();
-//				Gson gson = new Gson();
-//				String jsonStr = gson.toJson(resultSet);
-//				JSONParser parser = new JSONParser();
-//				JSONObject obj = (JSONObject) parser.parse(jsonStr);
-//				JSONArray obj2 = (JSONArray) obj.get("results");
-//				JSONObject obj3 = (JSONObject) obj2.get(0);
-//				JSONArray obj4 = (JSONArray) obj3.get("series");
-//				JSONObject obj5 = (JSONObject) obj4.get(0);
-//				JSONArray obj6 = (JSONArray) obj5.get("values");
-//
-//				String[] values = (obj6.get(0).toString()).split(",");
-//				getRunningMapsExecutionTime
-//						.add(Integer.parseInt(values[1].replace("]", "").replace("\"", "").replace("\\", "")));
-//
-//			} catch (Exception e) {
-//				System.out.println("no getRunningMapsExecutionTime!");
-//				getRunningMapsExecutionTime = null;
-//			}
-//		}
-//		return getRunningMapsExecutionTime;
-//	}
+	public static List<Integer> getRunningMapsExecutionTime(String jobId)
+			throws IOException, URISyntaxException, ParseException {
+
+		List<String> runningMapsName = getRunningMapsName(jobId);
+
+		int runningMapsNum = 0;
+
+		if (!(runningMapsName == null)) {
+			runningMapsNum = runningMapsName.size();
+		}
+
+		List<Integer> getRunningMapsExecutionTime = new ArrayList<Integer>();
+
+		query.setMeasurement("sigar");
+		query.setLimit(1000);
+		query.fillNullValues("0");
+		DataReader dataReader = new DataReader(query, configuration);
+		ResultSet resultSet = dataReader.getResult();
+		Query query1 = new Query();
+
+		for (int k = 0; k < runningMapsNum; k++) {
+			try {
+				query1.setCustomQuery("select executionTimeSec from map where mapId='" + runningMapsName.get(k)
+						+ "' order by desc limit 1");
+				dataReader.setQuery(query1);
+				resultSet = dataReader.getResult();
+				Gson gson = new Gson();
+				String jsonStr = gson.toJson(resultSet);
+				JSONParser parser = new JSONParser();
+				JSONObject obj = (JSONObject) parser.parse(jsonStr);
+				JSONArray obj2 = (JSONArray) obj.get("results");
+				JSONObject obj3 = (JSONObject) obj2.get(0);
+				JSONArray obj4 = (JSONArray) obj3.get("series");
+				JSONObject obj5 = (JSONObject) obj4.get(0);
+				JSONArray obj6 = (JSONArray) obj5.get("values");
+
+				String[] values = (obj6.get(0).toString()).split(",");
+				getRunningMapsExecutionTime
+						.add(Integer.parseInt(values[1].replace("]", "").replace("\"", "").replace("\\", "")));
+
+			} catch (Exception e) {
+				System.out.println("no getRunningMapsExecutionTime!");
+				getRunningMapsExecutionTime = null;
+			}
+		}
+		return getRunningMapsExecutionTime;
+	}
 
 	public static List<Integer> getRunningReducesShuffleExecutionTime(String jobId)
 			throws IOException, URISyntaxException, ParseException {
@@ -4673,6 +4770,8 @@ public class SmartReader {
 		}
 		return dataNodesNames;
 	}
+	
+	
 
 	public static boolean checkMasterNodeType(String jobId) throws IOException, URISyntaxException, ParseException {
 		String masterNode = getMasterNodeName(jobId);
@@ -5596,21 +5695,21 @@ public class SmartReader {
 		boolean durum = false;
 
 		int runningSpeculativeMapsNum = runningSpeculativeMapsName1.size();
-		int lowPerformanceRunningMapsNameNum = DataLocality.lowPerformanceRunningMapsName1.size();
+		int lowPerformanceRunningMapsName = lowPerformanceRunningMapsName1.size();
 
 		List<String> getNodesCommon = new ArrayList<String>();
 		List<Double> getNodesCommonCpuUsage = new ArrayList<Double>();
 		List<Double> getNodesCommonMemoryUsage = new ArrayList<Double>();
 
-		for (int i = 0; i < lowPerformanceRunningMapsNameNum; i++) {
-			if (!DataLocality.lowPerformanceRunningMapsName1.get(i).contains("_")) {
+		for (int i = 0; i < lowPerformanceRunningMapsName1.size(); i++) {
+			if (!lowPerformanceRunningMapsName1.get(i).contains("_")) {
 				durum = true;
 			}
 		}
 
 		if (durum) {
 			try {
-				if ((runningSpeculativeMapsNum > 0) && (DataLocality.lowPerformanceRunningMapsName1.size() > 0)) {
+				if ((runningSpeculativeMapsNum > 0) && (lowPerformanceRunningMapsName > 0)) {
 					// get the common elements.
 					if (!(getNodesCommon(jobId) == null)) {
 						for (int i = 0; i < getNodesCommon1.size(); i++) {
@@ -5843,7 +5942,6 @@ public class SmartReader {
 		System.out.println();
 		System.out.println("getSlowDataNodesName in SmartReader: " + getSlowDataNodesName);
 
-
 		query.setMeasurement("sigar");
 		query.setLimit(1000);
 		query.fillNullValues("0");
@@ -5851,7 +5949,6 @@ public class SmartReader {
 		ResultSet resultSet = dataReader.getResult();
 		Query query1 = new Query();
 		String deger = "";
-			
 
 		for (int i = 0; i < getSlowDataNodesName.size(); i++) {
 
@@ -5995,13 +6092,13 @@ public class SmartReader {
 			throws IOException, URISyntaxException, ParseException {
 
 		List<Integer> succeededMapsRunningHighNodesExecTime = new ArrayList<Integer>();
-		
+
 		List<String> succeededMapsNameRunningHighNodes = new ArrayList<String>();
-		
+
 		for (int i = 0; i < getSucceededMapsNameRunningHighNodes1.size(); i++) {
 			succeededMapsNameRunningHighNodes.add(getSucceededMapsNameRunningHighNodes1.get(i));
 		}
-		
+
 		query.setMeasurement("sigar");
 		query.setLimit(1000);
 		query.fillNullValues("0");
@@ -6413,6 +6510,375 @@ public class SmartReader {
 			}
 		}
 		return getStragglersRunningSlowNodesHostName;
+	}
+
+	// NETWORK ISSUES
+	// *****************************************************************************************************
+
+	public static List<String> getDisconnectedNodesName(String jobId)
+			throws IOException, URISyntaxException, ParseException {
+
+		List<String> getDisconnectedNodesName = new ArrayList<String>();
+		try {
+			query.setMeasurement("sigar");
+			query.setLimit(1000);
+			query.fillNullValues("0");
+
+			DataReader dataReader = new DataReader(query, configuration);
+			ResultSet resultSet = dataReader.getResult();
+			Query query1 = new Query();
+			query1.setCustomQuery(
+					"select distinct(nodeHostName) from nodesName where jobId='" + jobId + "' and state='SHUTDOWN'");
+
+			dataReader.setQuery(query1);
+			resultSet = dataReader.getResult();
+			Gson gson = new Gson();
+			String jsonStr = gson.toJson(resultSet);
+			JSONParser parser = new JSONParser();
+			JSONObject obj = (JSONObject) parser.parse(jsonStr);
+			JSONArray obj2 = (JSONArray) obj.get("results");
+			JSONObject obj3 = (JSONObject) obj2.get(0);
+			JSONArray obj4 = (JSONArray) obj3.get("series");
+			JSONObject obj5 = (JSONObject) obj4.get(0);
+			JSONArray obj6 = (JSONArray) obj5.get("values");
+
+			for (int i = 0; i < obj6.size(); i++) {
+				String[] values = (obj6.get(i).toString()).split(",");
+				getDisconnectedNodesName.add(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
+			}
+		} catch (Exception e) {
+//			System.out.println("no getDisconnectedNodesName!");
+			getDisconnectedNodesName = null;
+		}
+		disconnectedNodes = null;
+		disconnectedNodes = getDisconnectedNodesName;
+		return getDisconnectedNodesName;
+	}
+
+	// ANOTHER WAY to get the maps on disconnected nodes
+//	public static List<String> getMapsOnDisconnectedNodes(String jobId)
+//			throws IOException, URISyntaxException, ParseException, InterruptedException {
+//
+//		List<String> getMapsOnDisconnectedNodes = new ArrayList<String>();
+//
+//		List<String> disconnectedNodesNames = new ArrayList<String>();
+//
+//		for (int i = 0; i < disconnectedNodes.size(); i++) {
+//			disconnectedNodesNames.add(disconnectedNodes.get(i));
+//		}
+//
+////		System.out.println();
+////		System.out.println("disconnectedNodesNames in SmartReader: " + disconnectedNodesNames);
+//
+//
+//		query.setMeasurement("sigar");
+//		query.setLimit(1000);
+//		query.fillNullValues("0");
+//		DataReader dataReader = new DataReader(query, configuration);
+//		ResultSet resultSet = dataReader.getResult();
+//		Query query1 = new Query();
+//		String deger = "";
+//			
+//
+//		for (int i = 0; i < disconnectedNodesNames.size(); i++) {
+//
+//			try {
+//				query1.setCustomQuery("select distinct(mapId) from map where jobId='" + jobId + "' and host='" + disconnectedNodesNames.get(i) + "'");
+//				dataReader.setQuery(query1);
+//				resultSet = dataReader.getResult();
+//				Gson gson = new Gson();
+//				String jsonStr = gson.toJson(resultSet);
+//				JSONParser parser = new JSONParser();
+//				JSONObject obj = (JSONObject) parser.parse(jsonStr);
+//				JSONArray obj2 = (JSONArray) obj.get("results");
+//				JSONObject obj3 = (JSONObject) obj2.get(0);
+//				JSONArray obj4 = (JSONArray) obj3.get("series");
+//				JSONObject obj5 = (JSONObject) obj4.get(0);
+//				JSONArray obj6 = (JSONArray) obj5.get("values");
+////				System.out.println("obj6 in SmartReader = " + obj6);
+//				for (int j = 0; j < obj6.size(); j++) {
+//					String[] values = (obj6.get(j).toString()).split(",");
+//					deger = values[1].replace("]", "").replace("\"", "").replace("\\", "");
+//					if (!getMapsOnDisconnectedNodes.contains(deger)) {
+//						getMapsOnDisconnectedNodes.add(deger);
+//					}
+//				}
+////				System.out.println("mapsOnDisconnectedNodes in SmartReader = " + getMapsOnDisconnectedNodes);
+////				System.out.println();
+//			} catch (Exception e) {
+//				System.out.println("no mapsOnDisconnectedNodes!");
+//				System.out.println(e);
+////				e.printStackTrace();
+//				getMapsOnDisconnectedNodes = null;
+//			}
+//		}
+//		mapsOnDisconnectedNodes = null;
+//		mapsOnDisconnectedNodes = getMapsOnDisconnectedNodes;
+//		return getMapsOnDisconnectedNodes;
+//	}
+
+	public static List<String> getMapsOnDisconnectedNodes(String jobId)
+			throws IOException, URISyntaxException, ParseException, InterruptedException {
+
+		List<String> getMapsOnDisconnectedNodes = new ArrayList<String>();
+
+		query.setMeasurement("sigar");
+		query.setLimit(1000);
+		query.fillNullValues("0");
+		DataReader dataReader = new DataReader(query, configuration);
+		ResultSet resultSet = dataReader.getResult();
+		Query query1 = new Query();
+		String deger = "";
+
+		try {
+			query1.setCustomQuery(
+					"select distinct(mapId) from map where jobId='" + jobId + "' and diagnostic='DisconnectedNode'");
+			dataReader.setQuery(query1);
+			resultSet = dataReader.getResult();
+			Gson gson = new Gson();
+			String jsonStr = gson.toJson(resultSet);
+			JSONParser parser = new JSONParser();
+			JSONObject obj = (JSONObject) parser.parse(jsonStr);
+			JSONArray obj2 = (JSONArray) obj.get("results");
+			JSONObject obj3 = (JSONObject) obj2.get(0);
+			JSONArray obj4 = (JSONArray) obj3.get("series");
+			JSONObject obj5 = (JSONObject) obj4.get(0);
+			JSONArray obj6 = (JSONArray) obj5.get("values");
+//				System.out.println("obj6 in SmartReader = " + obj6);
+			for (int j = 0; j < obj6.size(); j++) {
+				String[] values = (obj6.get(j).toString()).split(",");
+				deger = values[1].replace("]", "").replace("\"", "").replace("\\", "");
+				if (!getMapsOnDisconnectedNodes.contains(deger)) {
+					getMapsOnDisconnectedNodes.add(deger);
+				}
+			}
+//				System.out.println("mapsOnDisconnectedNodes in SmartReader = " + getMapsOnDisconnectedNodes);
+//				System.out.println();
+		} catch (Exception e) {
+			System.out.println("no mapsOnDisconnectedNodes!");
+			System.out.println(e);
+//				e.printStackTrace();
+			getMapsOnDisconnectedNodes = null;
+		}
+
+		mapsOnDisconnectedNodes = null;
+		mapsOnDisconnectedNodes = getMapsOnDisconnectedNodes;
+		return getMapsOnDisconnectedNodes;
+	}
+
+	// NOT CORRECT EXACTLY as it should check 
+	public static List<String> getRunningMapsRestarted(String jobId) throws IOException, URISyntaxException, ParseException {
+
+		List<String> getRunningMapsRestarted = new ArrayList<String>();
+//		int totalNodes = getClusterTotalDataNodes(jobId);
+		try {
+			query.setMeasurement("sigar");
+			query.setLimit(1000);
+			query.fillNullValues("0");
+
+			DataReader dataReader = new DataReader(query, configuration);
+			ResultSet resultSet = dataReader.getResult();
+			Query query1 = new Query();
+			query1.setCustomQuery("select distinct(mapId) from map where jobId='" + jobId + "' and mapId=~/_/ and state='RUNNING'");
+//			query1.setCustomQuery("select mapId from map where jobId='" + jobId + "' and state='RUNNING' and blockId <> '-1' and caseId='" + runningMapsCaseId + "' order by desc");
+
+			dataReader.setQuery(query1);
+			resultSet = dataReader.getResult();
+			Gson gson = new Gson();
+			String jsonStr = gson.toJson(resultSet);
+			JSONParser parser = new JSONParser();
+			JSONObject obj = (JSONObject) parser.parse(jsonStr);
+			JSONArray obj2 = (JSONArray) obj.get("results");
+			JSONObject obj3 = (JSONObject) obj2.get(0);
+			JSONArray obj4 = (JSONArray) obj3.get("series");
+			JSONObject obj5 = (JSONObject) obj4.get(0);
+			JSONArray obj6 = (JSONArray) obj5.get("values");
+
+			for (int i = 0; i < obj6.size(); i++) {
+				String[] values = (obj6.get(i).toString()).split(",");
+				getRunningMapsRestarted.add(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
+			}
+		} catch (Exception e) {
+			System.out.println("no getRunningMapsRestarted!");
+			getRunningMapsRestarted = null;
+		}
+		runningMapsRestarted = null;
+		runningMapsRestarted = getRunningMapsRestarted;
+		return getRunningMapsRestarted;
+	}
+	
+	public static List<String> getAllMapsRestarted(String jobId) throws IOException, URISyntaxException, ParseException {
+
+		List<String> getAllMapsRestarted = new ArrayList<String>();
+//		int totalNodes = getClusterTotalDataNodes(jobId);
+		try {
+			query.setMeasurement("sigar");
+			query.setLimit(1000);
+			query.fillNullValues("0");
+
+			DataReader dataReader = new DataReader(query, configuration);
+			ResultSet resultSet = dataReader.getResult();
+			Query query1 = new Query();
+			query1.setCustomQuery("select distinct(mapId) from map where jobId='" + jobId + "' and mapId=~/_/");
+
+			dataReader.setQuery(query1);
+			resultSet = dataReader.getResult();
+			Gson gson = new Gson();
+			String jsonStr = gson.toJson(resultSet);
+			JSONParser parser = new JSONParser();
+			JSONObject obj = (JSONObject) parser.parse(jsonStr);
+			JSONArray obj2 = (JSONArray) obj.get("results");
+			JSONObject obj3 = (JSONObject) obj2.get(0);
+			JSONArray obj4 = (JSONArray) obj3.get("series");
+			JSONObject obj5 = (JSONObject) obj4.get(0);
+			JSONArray obj6 = (JSONArray) obj5.get("values");
+
+			for (int i = 0; i < obj6.size(); i++) {
+				String[] values = (obj6.get(i).toString()).split(",");
+				getAllMapsRestarted.add(values[1].replace("]", "").replace("\"", "").replace("\\", ""));
+			}
+		} catch (Exception e) {
+			System.out.println("no getAllMapsRestarted!");
+			getAllMapsRestarted = null;
+		}
+//		runningMapsRestarted = null;
+//		runningMapsRestarted = getAllMapsRestarted;
+		return getAllMapsRestarted;
+	}
+
+	// --------------------------------- Network latency
+
+	public static List<String> getLowDownloadNodesName(String jobId)
+			throws IOException, URISyntaxException, ParseException {
+
+		List<String> getLowDownloadNodesName = new ArrayList<String>();
+		List<String> dataNodesNames = new ArrayList<String>();
+		dataNodesNames = getDataNodesNames(jobId);
+		
+		List<Double> getDataNodesDownloadSpeeds = new ArrayList<Double>();
+		List<String> getDataNodesNamesForBandwidth = new ArrayList<String>();
+		HashMap<String, Double> info = new HashMap<String, Double>();
+//		dataNodesNames.add("slave1");
+//		dataNodesNames.add("slave2");
+		String nodeName = "";
+		double download = 0;
+		double total = 0;
+		double average = 0;
+
+		for (int k = 0; k < dataNodesNames.size(); k++) {
+
+			try {
+				query.setMeasurement("sigar");
+				query.setLimit(1000);
+				query.fillNullValues("0");
+
+				DataReader dataReader = new DataReader(query, configuration);
+				ResultSet resultSet = dataReader.getResult();
+				Query query1 = new Query();
+				query1.setCustomQuery("select hostName, downloadMbps from resource where hostName='"
+						+ dataNodesNames.get(k) + "' order by desc limit 1");
+				dataReader.setQuery(query1);
+				resultSet = dataReader.getResult();
+				Gson gson = new Gson();
+				String jsonStr = gson.toJson(resultSet);
+				JSONParser parser = new JSONParser();
+				JSONObject obj = (JSONObject) parser.parse(jsonStr);
+				JSONArray obj2 = (JSONArray) obj.get("results");
+				JSONObject obj3 = (JSONObject) obj2.get(0);
+				JSONArray obj4 = (JSONArray) obj3.get("series");
+				JSONObject obj5 = (JSONObject) obj4.get(0);
+				JSONArray obj6 = (JSONArray) obj5.get("values");
+
+				for (int i = 0; i < obj6.size(); i++) {
+					String[] values = (obj6.get(i).toString()).split(",");
+					nodeName = (values[1].replace("]", "").replace("\"", "").replace("\\", ""));
+					download = Double.parseDouble(values[2].replace("]", "").replace("\"", "").replace("\\", ""));
+					getDataNodesNamesForBandwidth.add(nodeName);
+					getDataNodesDownloadSpeeds.add(download);
+					total += download;
+					info.put(nodeName, download);
+				}
+			} catch (Exception e) {
+				System.out.println("no getLowDownloadNodesName!");
+				getLowDownloadNodesName = null;
+			}
+		}
+
+		average = total / dataNodesNames.size();
+//		System.out.println("all info = " + info);
+//		System.out.println("average = " + average); 
+//		System.out.println();
+		
+		for (Entry<String, Double> entry : info.entrySet()) {
+		    if (entry.getValue() < average) {
+		    	getLowDownloadNodesName.add(entry.getKey());
+			}
+		}
+		
+//		System.out.println("getLowDownloadNodesName = " + getLowDownloadNodesName);
+		lowDownloadNodes = null;
+		dataNodesDownloadSpeeds = null;
+		dataNodesNamesForBandwidth = null;
+		lowDownloadNodes = getLowDownloadNodesName;
+		dataNodesDownloadSpeeds = getDataNodesDownloadSpeeds;
+		dataNodesNamesForBandwidth = getDataNodesNamesForBandwidth;
+		return getLowDownloadNodesName;
+	}
+
+	public static List<String> getMapsOnLowDownloadNodes(String jobId)
+			throws IOException, URISyntaxException, ParseException, InterruptedException {
+
+		List<String> getMapsOnLowDownloadNodes = new ArrayList<String>();
+		List<String> getLowDownloadNodes = new ArrayList<String>();
+		
+		for (int i = 0; i < lowDownloadNodes.size(); i++) {
+			getLowDownloadNodes.add(lowDownloadNodes.get(i));
+		}
+
+		query.setMeasurement("sigar");
+		query.setLimit(1000);
+		query.fillNullValues("0");
+		DataReader dataReader = new DataReader(query, configuration);
+		ResultSet resultSet = dataReader.getResult();
+		Query query1 = new Query();
+		String deger = "";
+
+		for (int i = 0; i < getLowDownloadNodes.size(); i++) {
+
+			try {
+				query1.setCustomQuery("select distinct(mapId) from map where jobId='" + jobId + "' and host='" + getLowDownloadNodes.get(i) + "'");
+				dataReader.setQuery(query1);
+				resultSet = dataReader.getResult();
+				Gson gson = new Gson();
+				String jsonStr = gson.toJson(resultSet);
+				JSONParser parser = new JSONParser();
+				JSONObject obj = (JSONObject) parser.parse(jsonStr);
+				JSONArray obj2 = (JSONArray) obj.get("results");
+				JSONObject obj3 = (JSONObject) obj2.get(0);
+				JSONArray obj4 = (JSONArray) obj3.get("series");
+				JSONObject obj5 = (JSONObject) obj4.get(0);
+				JSONArray obj6 = (JSONArray) obj5.get("values");
+//				System.out.println("obj6 in SmartReader = " + obj6);
+				for (int j = 0; j < obj6.size(); j++) {
+					String[] values = (obj6.get(j).toString()).split(",");
+					deger = values[1].replace("]", "").replace("\"", "").replace("\\", "");
+					if (!getMapsOnLowDownloadNodes.contains(deger)) {
+						getMapsOnLowDownloadNodes.add(deger);
+					}
+				}
+//				System.out.println("mapsOnDisconnectedNodes in SmartReader = " + getMapsOnDisconnectedNodes);
+//				System.out.println();
+			} catch (Exception e) {
+				System.out.println("no getMapsOnLowDownloadNodes!");
+				System.out.println(e);
+//				e.printStackTrace();
+				getMapsOnLowDownloadNodes = null;
+			}
+		}
+
+		mapsOnLowDownloadNodes = null;
+		mapsOnLowDownloadNodes = getMapsOnLowDownloadNodes;
+		return getMapsOnLowDownloadNodes;
 	}
 
 }

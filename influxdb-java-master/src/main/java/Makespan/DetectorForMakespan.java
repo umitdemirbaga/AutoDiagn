@@ -15,31 +15,54 @@ public class DetectorForMakespan {
 
 	public static ResourceLock lock = new ResourceLock();
 
-	public static Streaming threadStreaming = new Streaming();
 	public static DataLocality threadDataLocality = new DataLocality(lock);
 	public static HeterogeneousCluster threadHeterogeneousCluster = new HeterogeneousCluster(lock);
+	public static NetworkDisconnection threadNetworkDisconnection = new NetworkDisconnection();
+	public static NetworkBandwidth threadNetworkBandwidth = new NetworkBandwidth();
+	
 //	public static UnnecessarySpeculation threadUnnecessarySpeculation = new UnnecessarySpeculation(lock);
 //	public static ResourceOverAllocation threadResourceOverAllocation = new ResourceOverAllocation();
 //	public static ResourceShortage threadResourceShortage = new ResourceShortage();
 
-	public static String jobId = "";
+	public static String jobId = ""; 
+	
+	public static int sayac = 0;
+	
+	public static String rabbitMQhost = "";
 
 	public static void main(String[] args) throws Exception {
+		
+		if (sayac == 0) {
+			Scanner keyboard = new Scanner(System.in);
+			
+			boolean durum = false;
+			String prefer = "";
 
-//		jobId= "1583079278697_0002";
+			while (!durum) {
+				System.out.println("cloud (c) or local (l) ?");
+				prefer = keyboard.next();
+				if (prefer.startsWith("c")) {
+					rabbitMQhost = "172.31.0.117";
+					durum = true;
+				} else if (prefer.startsWith("l")){
+					rabbitMQhost = "192.168.56.6"; 
+					durum = true;
+				}
+			}
+		}
+		sayac ++;
 
 //		Scanner read = new Scanner(System.in);
 //		System.out.println("Enter the jobId: ");
 //		jobId = read.next();
 		// 1583079278697_0002
 
-		threadStreaming.setPriority(Thread.MAX_PRIORITY);
-		threadDataLocality.setPriority(threadStreaming.getPriority() - 1);
-		threadHeterogeneousCluster.setPriority(threadDataLocality.getPriority() - 2);
-//		threadUnnecessarySpeculation.setPriority(threadDataLocality.getPriority() - 3);
-//		threadResourceShortage.setPriority(threadDataLocality.getPriority()- 4);
-//		threadResourceOverAllocation.setPriority(Thread.MIN_PRIORITY);
+		threadDataLocality.setPriority(Thread.MAX_PRIORITY);
+		threadHeterogeneousCluster.setPriority(threadDataLocality.getPriority() - 1);
 		
+//		threadUnnecessarySpeculation.setPriority(threadDataLocality.getPriority() - 2);
+//		threadResourceShortage.setPriority(threadDataLocality.getPriority()- 3);
+//		threadResourceOverAllocation.setPriority(Thread.MIN_PRIORITY);
 
 		int getNumJobs = SmartReader.getNumJobs();
 		String lastJobNo = SmartReader.getLastJobNo();
@@ -94,9 +117,10 @@ public class DetectorForMakespan {
 
 		Thread.sleep(3000); // ACTIVE THIS
 
-		threadStreaming.start();
-		threadDataLocality.start();
-		threadHeterogeneousCluster.start();
+		threadNetworkDisconnection.start();
+//		threadNetworkBandwidth.start();
+//		threadDataLocality.start();
+//		threadHeterogeneousCluster.start();
 //		threadUnnecessarySpeculation.start();
 //		threadResourceOverAllocation.start();
 //		threadResourceShortage.start();

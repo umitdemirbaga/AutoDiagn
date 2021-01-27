@@ -90,7 +90,7 @@ public class UnnecessarySpeculation extends Thread {
 //						e2.printStackTrace();
 //					}
 
-					getLowPerformanceRunningMapsName = DataLocality.lowPerformanceRunningMapsName1;
+					getLowPerformanceRunningMapsName = SmartReader.lowPerformanceRunningMapsName1;
 
 					if (getLowPerformanceRunningMapsName.size() > 0) {
 
@@ -98,30 +98,30 @@ public class UnnecessarySpeculation extends Thread {
 //						System.out.println();
 						System.out.println("< UnnecessarySpeculation >");
 						System.out.println("---------------------------------------");
-						System.out.println("All the running maps			: " + DataLocality.runningMapsName1);
+						System.out.println("All the running maps			: " + SmartReader.runningMapsName1);
 
 						System.out.println(
-								"runningMapsPerformanceMedian		: " + DataLocality.runningMapsPerformanceMedian1);
+								"runningMapsPerformanceMedian		: " + SmartReader.runningMapsPerformanceMedian1);
 
-						System.out.println("runningMapsPerformance			: " + DataLocality.runningMapsPerformanceNorm1);
+						System.out.println("runningMapsPerformance			: " + SmartReader.runningMapsPerformance1);
 
 						performanceWithFactor.clear();
 
-						for (int i = 0; i < DataLocality.runningMapsPerformanceNorm1.size(); i++) {
+						for (int i = 0; i < SmartReader.runningMapsPerformance1.size(); i++) {
 							performanceWithFactor.add(Double.parseDouble(new DecimalFormat("##.##")
-									.format(DataLocality.runningMapsPerformanceNorm1.get(i) * DataLocality.factor)));
+									.format(SmartReader.runningMapsPerformance1.get(i) * 1.15)));
 						}
 
 						System.out.println("performanceWithFactor			: " + performanceWithFactor);
 
-						System.out.println("runningMapsProgress			: " + DataLocality.runningMapsProgress1);
+						System.out.println("runningMapsProgress			: " + SmartReader.runningMapsProgress1);
 
 						System.out
-								.println("runningMapsExecutionTime		: " + DataLocality.runningMapsExecutionTime1);
+								.println("runningMapsExecutionTime		: " + SmartReader.runningMapsExecutionTime1);
 
-						System.out.println("Outliers				: " + getLowPerformanceRunningMapsName);
+						System.out.println("Stragglers				: " + getLowPerformanceRunningMapsName);
 
-						caseId = DataLocality.caseId;
+						caseId = SmartReader.runningMapsCaseId;
 
 						System.out.println("caseId					: " + caseId);
 						System.out.println("---------------------------------------");
@@ -191,12 +191,12 @@ public class UnnecessarySpeculation extends Thread {
 									// -----------------------------------------------------------
 
 									String runningMapsName = "";
-									for (int i = 0; i < DataLocality.runningMapsName1.size(); i++) {
+									for (int i = 0; i < SmartReader.runningMapsName1.size(); i++) {
 										if (i == 0) {
-											runningMapsName = DataLocality.runningMapsName1.get(i);
+											runningMapsName = SmartReader.runningMapsName1.get(i);
 										} else {
 											runningMapsName = runningMapsName + "-"
-													+ DataLocality.runningMapsName1.get(i);
+													+ SmartReader.runningMapsName1.get(i);
 										}
 									}
 
@@ -214,12 +214,12 @@ public class UnnecessarySpeculation extends Thread {
 									// -----------------------------------------------------------
 
 									String runningMapsProgress = "";
-									for (int i = 0; i < DataLocality.runningMapsProgress1.size(); i++) {
+									for (int i = 0; i < SmartReader.runningMapsProgress1.size(); i++) {
 										if (i == 0) {
-											runningMapsProgress = DataLocality.runningMapsProgress1.get(i) + "";
+											runningMapsProgress = SmartReader.runningMapsProgress1.get(i) + "";
 										} else {
 											runningMapsProgress = runningMapsProgress + "-"
-													+ DataLocality.runningMapsProgress1.get(i);
+													+ SmartReader.runningMapsProgress1.get(i);
 										}
 									}
 
@@ -237,13 +237,13 @@ public class UnnecessarySpeculation extends Thread {
 									// -----------------------------------------------------------
 
 									String runningMapsExecutionTime = "";
-									for (int i = 0; i < DataLocality.runningMapsExecutionTime1.size(); i++) {
+									for (int i = 0; i < SmartReader.runningMapsExecutionTime1.size(); i++) {
 										if (i == 0) {
-											runningMapsExecutionTime = DataLocality.runningMapsExecutionTime1.get(i)
+											runningMapsExecutionTime = SmartReader.runningMapsExecutionTime1.get(i)
 													+ "";
 										} else {
 											runningMapsExecutionTime = runningMapsExecutionTime + "-"
-													+ DataLocality.runningMapsExecutionTime1.get(i);
+													+ SmartReader.runningMapsExecutionTime1.get(i);
 										}
 									}
 
@@ -261,18 +261,18 @@ public class UnnecessarySpeculation extends Thread {
 									// -----------------------------------------------------------
 
 									String runningMapsPerformance = "";
-									for (int i = 0; i < DataLocality.runningMapsPerformanceNorm1.size(); i++) {
+									for (int i = 0; i < SmartReader.runningMapsPerformance1.size(); i++) {
 										if (i == 0) {
-											runningMapsPerformance = DataLocality.runningMapsPerformanceNorm1.get(i) + "";
+											runningMapsPerformance = SmartReader.runningMapsPerformance1.get(i) + "";
 										} else {
 											runningMapsPerformance = runningMapsPerformance + "-"
-													+ DataLocality.runningMapsPerformanceNorm1.get(i);
+													+ SmartReader.runningMapsPerformance1.get(i);
 										}
 									}
 
 									last = "metricsType=" + "XunSpeculationMapsPerformance" + ",caseId=" + caseId
 											+ ",mapsPerformance=" + runningMapsPerformance + ",median="
-											+ DataLocality.runningMapsPerformanceMedian1 + ",jobId=" + jobId;
+											+ SmartReader.runningMapsPerformanceMedian1 + ",jobId=" + jobId;
 
 									System.out.println(" [x] Sent >>>>  '" + last + "'");
 
@@ -285,17 +285,17 @@ public class UnnecessarySpeculation extends Thread {
 									// -----------------------------------------------------------
 
 									String stragglers = "";
-									for (int i = 0; i < DataLocality.lowPerformanceRunningMapsName1.size(); i++) {
+									for (int i = 0; i < SmartReader.lowPerformanceRunningMapsName1.size(); i++) {
 										if (i == 0) {
-											stragglers = DataLocality.lowPerformanceRunningMapsName1.get(i);
+											stragglers = SmartReader.lowPerformanceRunningMapsName1.get(i);
 										} else {
 											stragglers = stragglers + "-"
-													+ DataLocality.lowPerformanceRunningMapsName1.get(i);
+													+ SmartReader.lowPerformanceRunningMapsName1.get(i);
 										}
 									}
 
 									last = "metricsType=" + "XunSpeculationStragglers" + ",caseId=" + caseId
-											+ ",mapsName=" + stragglers + ",factor=" + DataLocality.factor + ",jobId="
+											+ ",mapsName=" + stragglers + ",factor=" + SmartReader.factor + ",jobId="
 											+ jobId;
 
 									System.out.println(" [x] Sent >>>>  '" + last + "'");
